@@ -1,0 +1,6 @@
+{
+  "name": "\uD83D\uDD16 Versioning",
+  "description": "새로운 버전을 생성하고 관리할 수 있는 스크립트로서, Prefix(Module Name)을 필요로 합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
