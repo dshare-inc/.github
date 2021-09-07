@@ -1,0 +1,64 @@
+name: 🔖 Versioning
+
+on:
+  workflow_dispatch:
+    inputs:
+      hint:
+        description: 'Input hint (placeholder) - DO NOT USE THIS INPUT.'
+        required: false
+        default: 'api / patch'
+      module:
+        description: 'Module name (like api, gateway-api, batch..)'
+        required: true
+      bump:
+        description: Bump version type (major, minor, patch)
+        required: true
+
+env:
+  GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+
+concurrency:
+  group: versioning-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  Versioning:
+    name: Versioning (Tag)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Get Previous Tag
+        id: original
+        run: |
+          ORIGINAL=`git describe --abbrev=0 --tags --match "${{ github.event.inputs.module }}-[0-9]**" 2> /dev/null`
+
+          if [[ -z "$ORIGINAL" ]]; then
+            ORIGINAL="${{ github.event.inputs.module }}-0.0.1"
+          fi
+
+          echo "::set-output name=result::$ORIGINAL"
+
+      - name: Generate Version
+        id: version
+        uses: dshare-inc/actions-semver@1.0.3
+        with:
+          version: ${{ steps.original.outputs.result }}
+          return_with_suffix: true
+          return_with_prefix: true
+          method: ${{ github.event.inputs.bump }}
+
+      - name: Tag Push
+        uses: mathieudutour/github-tag-action@v5.5
+        with:
+          github_token: ${{ secrets.GIT_TOKEN }}
+          custom_tag: ${{ steps.version.outputs.version }}
+          default_bump: false
+          create_annotated_tag: false
+          tag_prefix: ''
+          append_to_pre_release_tag: ''
