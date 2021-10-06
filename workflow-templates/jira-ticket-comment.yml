@@ -27,6 +27,19 @@ jobs:
           body-includes: 'by dshare-bot, PR COMMENT (jira-ticket-comment)'
           direction: last
 
+      - name: Create comment
+        if: steps.fc.outputs.comment-id == ''
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🎫 Jira Issue
+            > 이 PR은 Jira Issue가 존재합니다. 자세한 사항은 Jira에서 확인하시기 바랍니다.
+
+            [https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }}](https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }})
+
+            by dshare-bot, PR COMMENT (jira-ticket-comment)
+
       - name: Update comment
         if: steps.fc.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v1
