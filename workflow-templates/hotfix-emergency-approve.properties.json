@@ -1,0 +1,6 @@
+{
+  "name": "\uD83D\uDEA8 Hotfix Fast-track Workflow",
+  "description": "hotfix \uD83D\uDEA8 라벨이 PR에 존재한다면 자동으로 리뷰를 진행합니다. Unlabeled 가 발생한다면, 리뷰를 취소합니다. SLACK_HOTFIX_NOTIFICATION_CHANNEL, SLACK_WEBHOOK 두 개의 SECRETS 가 필요합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
