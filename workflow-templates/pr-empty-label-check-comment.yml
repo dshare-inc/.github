@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Success
-        on: github.event.pull_request.labels.length > 0
+        if: github.event.pull_request.labels.length > 0
         run: |
           return 0
       - name: Fail
-        on: github.event.pull_request.labels.length < 1
+        if: github.event.pull_request.labels.length < 1
         run: |
           return 1
