@@ -28,7 +28,7 @@ jobs:
           direction: last
 
       - name: Create comment
-        if: steps.fc.outputs.comment-id == ''
+        if: steps.fc.outputs.comment-id == '' && steps.jira.outputs.ticket != ''
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -41,7 +41,7 @@ jobs:
             by dshare-bot, PR COMMENT (jira-ticket-comment)
 
       - name: Update comment
-        if: steps.fc.outputs.comment-id != ''
+        if: steps.fc.outputs.comment-id != '' && steps.jira.outputs.ticket != ''
         uses: peter-evans/create-or-update-comment@v1
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
