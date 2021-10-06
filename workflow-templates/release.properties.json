@@ -1,0 +1,6 @@
+{
+  "name": "\uD83D\uDE9B Release",
+  "description": "새로운 릴리즈를 생성합니다. 커밋 로그를 기준으로 작성하며, 태그를 기준으로 릴리즈를 생성합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}

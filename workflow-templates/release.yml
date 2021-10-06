@@ -1,0 +1,58 @@
+name: 🚛 Release
+
+on:
+  push:
+    tags:
+      - '*.*.*' # 0.0.0
+      - '*-*.*.*' # prefix-0.0.0
+      - '*-*.*.*-*' # prefix-0.0.0-suffix
+
+concurrency:
+  group: release-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  Github:
+    name: Github Release
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Create CHANGELOG
+        id: changelog
+        uses: actions/github-script@v4
+        env:
+          GIT_REF: ${{ github.ref }}
+        with:
+          script: |
+            const commits = await github.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: process.env.GIT_REF,
+              per_page: 10,
+            });
+
+            const result = commits
+              .data
+              .map(item => `${item.commit.message.split('\n')[0]} by ${item.commit.author.name} <${item.commit.author.email}>`)
+              .filter(item => !item.startsWith('Merge') && !item.startsWith('プルリクエスト'))
+              .map(item => `- ${item}`)
+              .join('\n');
+
+            return `## CHANGELOG (Commits)\n\n${result}`;
+
+      - name: Save CHANGELOG
+        env:
+          CHANGELOG: ${{ steps.changelog.outputs.result }}
+        run: echo -e $CHANGELOG | sed -e 's/^"//' -e 's/"$//' > CHANGELOG.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: CHANGELOG.txt
