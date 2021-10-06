@@ -9,6 +9,7 @@ on:
 jobs:
   Check:
     name: Check JIRA Ticket
+    runs-on: ubuntu-latest
     steps:
       - name: Extract Ticket
         id: jira
