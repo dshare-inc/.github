@@ -1,0 +1,6 @@
+{
+  "name": "\uD83D\uDC40 Auto assign",
+  "description": "담당자에게 PR을 자동으로 할당합니다. .github/auto_assign.yml 을 생성한 후 내용을 추가해야 합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
