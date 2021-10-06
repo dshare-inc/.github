@@ -2,9 +2,10 @@ name: '🎫 Jira Ticket Comment'
 
 on:
   pull_request:
-    - opened
-    - reopened
-    - edited
+    types:
+      - opened
+      - reopened
+      - edited
 
 jobs:
   Check:
