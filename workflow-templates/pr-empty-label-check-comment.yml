@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Success
-        if: github.event.pull_request.labels.length > 0
+        if: github.event.pull_request.labels.length > 0 || (github.event.label != null && github.event.label.name == 'hotfix 🚨')
         run: |
-          return 0
+          exit 0
       - name: Fail
-        if: github.event.pull_request.labels.length < 1
+        if: github.event.pull_request.labels.length < 1 && github.event.label.name != 'hotfix 🚨'
         run: |
-          return 1
+          exit 1

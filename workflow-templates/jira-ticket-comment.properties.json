@@ -1,0 +1,6 @@
+{
+  "name": "\uD83C\uDFAB Jira Ticket Comment",
+  "description": "Pull Request에 Jira 이슈 번호가 존재하면 이를 Comment로 남깁니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
