@@ -1,0 +1,6 @@
+{
+  "name": "\uD83C\uDFF7 Empty Label",
+  "description": "Pull Request에 라벨이 없을 때 Merge를 차단하는 목적으로 사용",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
