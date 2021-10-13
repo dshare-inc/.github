@@ -15,7 +15,7 @@ jobs:
       - name: Extract Ticket
         id: jira
         run: |
-          ORIGINAL=$(echo '${{ github.event.pull_request.name }}' | awk '/^([A-Z]+-[0-9]+)/{print $1}')
+          ORIGINAL=$(echo '${{ github.event.pull_request.title }}' | awk '/^([A-Z]+-[0-9]+)/{print $1}')
 
           echo "::set-output name=ticket::$ORIGINAL"
 
@@ -47,10 +47,10 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-              ### 🎫 Jira Issue
-              > 이 PR은 Jira Issue가 존재합니다. 자세한 사항은 Jira에서 확인하시기 바랍니다.
+            ### 🎫 Jira Issue
+            > 이 PR은 Jira Issue가 존재합니다. 자세한 사항은 Jira에서 확인하시기 바랍니다.
 
-              [https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }}](https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }})
+            [https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }}](https://dshare.atlassian.net/browse/${{ steps.jira.outputs.ticket }})
 
-              by dshare-bot, PR COMMENT (jira-ticket-comment)
+            by dshare-bot, PR COMMENT (jira-ticket-comment)
 
