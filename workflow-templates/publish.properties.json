@@ -1,0 +1,6 @@
+{
+  "name": "⏫ Publish",
+  "description": "라이브러리, 프레임워크 등을 CodeArtifact 에 배포합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
