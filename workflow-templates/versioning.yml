@@ -18,8 +18,12 @@ on:
         required: false
 
 env:
+  GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+  GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+  GIT_USER_MAIL: ${{ secrets.GIT_USER_MAIL }}
   SUFFIX: ${{ github.event.inputs.suffix }}
   VERSIONING_NODEJS_PACKAGE_JSON: 'false'
+  VERSIONING_GRADLE_PACKAGE: 'false'
 
 concurrency:
   group: versioning-${{ github.repository }}-${{ github.ref }}
@@ -33,7 +37,7 @@ jobs:
       - name: Checkout VCS
         uses: actions/checkout@v2
         with:
-          token: ${{ github.token }}
+          token: ${{ env.GITHUB_TOKEN }}
           ref: ${{ github.ref }}
           fetch-depth: 0
 
@@ -92,16 +96,16 @@ jobs:
             cd ${{ github.event.inputs.module }}
           fi
           npm version ${{ steps.version-node.outputs.version }} --no-git-tag-version
-          git config user.name "dshare-bot"
-          git config user.email "bot@dshare.dev"
+          git config user.name "${{ env.GIT_USER_NAME }}"
+          git config user.email "${{ env.GIT_USER_MAIL }}"
           git add package.json
           git commit -m ":bookmark: Update package.json version"
           git push origin main
 
       - name: Tag Push
         run: |
-          git config user.name "dshare-bot"
-          git config user.email "bot@dshare.dev"
+          git config user.name "${{ env.GIT_USER_NAME }}"
+          git config user.email "${{ env.GIT_USER_MAIL }}"
           git tag -a ${{ steps.version.outputs.version }} -m "Release ${{ steps.version.outputs.version }}"
           git push origin ${{ steps.version.outputs.version }}
 
