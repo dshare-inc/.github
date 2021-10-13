@@ -1,0 +1,6 @@
+{
+  "name": "\uD83E\uDD2B Close stale issues and PRs",
+  "description": "활동이 없는 Issue와 PR을 자동으로 종료합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
