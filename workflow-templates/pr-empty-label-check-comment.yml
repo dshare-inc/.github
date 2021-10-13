@@ -4,19 +4,22 @@ on:
   pull_request:
     types:
       - opened
+      - reopened
       - ready_for_review
       - labeled
       - unlabeled
 
 jobs:
-  Success:
+  Label:
+    name: Check Label
     runs-on: ubuntu-latest
     steps:
       - name: Success
-        if: github.event.pull_request.labels.length > 0 || (github.event.label != null && github.event.label.name == 'hotfix 🚨')
+        if: github.event.pull_request.labels[0] != null
         run: |
           exit 0
+
       - name: Fail
-        if: github.event.pull_request.labels.length < 1 && github.event.label.name != 'hotfix 🚨'
+        if: github.event.pull_request.labels[0] == null
         run: |
           exit 1
