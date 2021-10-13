@@ -6,14 +6,20 @@ on:
       - labeled
       - unlabeled
 
+## Secrets
+#
+# SLACK_HOTFIX_NOTIFICATION_CHANNEL
+# SLACK_HOTFIX_NOTIFICATION_WEBHOOK
+
 jobs:
   revoke:
     runs-on: ubuntu-latest
-    on: github.event.pull_request == 'unlabeled' && github.event.label.name == 'hotfix 🚨'
+    if: github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨'
     steps:
       - name: Revoke pull request
         uses: andrewmusgrave/automatic-pull-request-review@0.0.5
         with:
+          repo-token: ${{ github.token }}
           event: REQUEST_CHANGES
           body: |
             ## 🚨 REVOKE Hotfix Fast-tract
@@ -23,19 +29,19 @@ jobs:
 
   approve:
     runs-on: ubuntu-latest
-    on: github.event.pull_request == 'labeled' && github.event.label.name == 'hotfix 🚨'
+    if: github.event.action == 'labeled' && github.event.label.name == 'hotfix 🚨'
     steps:
       - name: Approve pull request
         uses: andrewmusgrave/automatic-pull-request-review@0.0.5
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ github.token }}
           event: APPROVE
           body: |
             ## 🚨 Hotfix Fast-tract (Auto Review)
 
             PR ${{ github.event.pull_request.number }} 에 대한 리뷰가 자동으로 진행되었습니다.
             요청에 따라, 이 PR은 코드 검증을 통과하는 즉시 Merge가 가능하도록 자동으로 리뷰되었습니다.
-            관련 사항에 대하여 Slack Notification 을 제공하였으니, 해당 사항에 대해 꼭 확인하시기 바랍니다.
+            관련 사항에 대하여 Slack Notification 을 제공하였으니, 해당 사항에 대해 확인하시기 바랍니다.
 
       - name: Notification
         uses: rtCamp/action-slack-notify@v2
@@ -43,9 +49,9 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_CHANNEL }}
           SLACK_COLOR: '#f85252'
           SLACK_ICON_EMOJI: ':fearful:'
-          SLACK_MESSAGE: '**Pull request ${{ github.event.pull_request.number }} - (${{ github.event.pull_request.title }})** 에 대하여 Hotfix Fast-track 이 적용되어 자동으로 리뷰되었습니다.'
+          SLACK_MESSAGE: 'Pull request ${{ github.event.pull_request.number }} - (${{ github.event.pull_request.title }}) 에 대하여 Hotfix Fast-track 이 적용되어 자동으로 리뷰되었습니다.'
           SLACK_TITLE: Hotfix Fast-track(${{ github.repository }}/${{ github.event.pull_request.number }})
-          SLACK_USERNAME: Hotfix FAST TRACK
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_USERNAME: 'Git - Hotfix Alert'
+          SLACK_WEBHOOK: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
           MSG_MINIMAL: true
           SLACK_FOOTER: 'https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
