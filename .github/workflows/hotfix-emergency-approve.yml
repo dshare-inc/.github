@@ -1,12 +1,14 @@
 name: 🚨 Hotfix Fast-track
 
 on:
+  workflow_call:
   pull_request:
-    - opened
-    - reopened
-    - closed
-    - labeled
-    - unlabeled
+    types:
+      - opened
+      - reopened
+      - closed
+      - labeled
+      - unlabeled
 
 jobs:
   approve:
