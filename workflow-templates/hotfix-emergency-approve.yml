@@ -2,34 +2,16 @@ name: 🚨 Hotfix Fast-track
 
 on:
   pull_request:
-    types:
-      - labeled
-      - unlabeled
-
-## Secrets
-#
-# SLACK_HOTFIX_NOTIFICATION_CHANNEL
-# SLACK_HOTFIX_NOTIFICATION_WEBHOOK
+    - opened
+    - reopened
+    - closed
+    - labeled
+    - unlabeled
 
 jobs:
-  revoke:
-    runs-on: ubuntu-latest
-    if: github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨'
-    steps:
-      - name: Revoke pull request
-        uses: andrewmusgrave/automatic-pull-request-review@0.0.5
-        with:
-          repo-token: ${{ github.token }}
-          event: REQUEST_CHANGES
-          body: |
-            ## 🚨 REVOKE Hotfix Fast-tract
-
-            PR ${{ github.event.pull_request.number }} 의 자동 리뷰가 제거되었습니다.
-            해당 사항은 Label 이 제거되어 발생했습니다. 다시 리뷰를 진행해주세요
-
   approve:
     runs-on: ubuntu-latest
-    if: github.event.action == 'labeled' && github.event.label.name == 'hotfix 🚨'
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
     steps:
       - name: Approve pull request
         uses: andrewmusgrave/automatic-pull-request-review@0.0.5
@@ -40,18 +22,11 @@ jobs:
             ## 🚨 Hotfix Fast-tract (Auto Review)
 
             PR ${{ github.event.pull_request.number }} 에 대한 리뷰가 자동으로 진행되었습니다.
-            요청에 따라, 이 PR은 코드 검증을 통과하는 즉시 Merge가 가능하도록 자동으로 리뷰되었습니다.
-            관련 사항에 대하여 Slack Notification 을 제공하였으니, 해당 사항에 대해 확인하시기 바랍니다.
 
       - name: Notification
-        uses: rtCamp/action-slack-notify@v2
+        uses: slackapi/slack-github-action@v1.16.0
         env:
-          SLACK_CHANNEL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_CHANNEL }}
-          SLACK_COLOR: '#f85252'
-          SLACK_ICON_EMOJI: ':fearful:'
-          SLACK_MESSAGE: 'Pull request ${{ github.event.pull_request.number }} - (${{ github.event.pull_request.title }}) 에 대하여 Hotfix Fast-track 이 적용되어 자동으로 리뷰되었습니다.'
-          SLACK_TITLE: Hotfix Fast-track(${{ github.repository }}/${{ github.event.pull_request.number }})
-          SLACK_USERNAME: 'Git - Hotfix Alert'
-          SLACK_WEBHOOK: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
-          MSG_MINIMAL: true
-          SLACK_FOOTER: 'https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*🚨 @channel 핫픽스가 발생하여 리뷰되었습니다.*"}},{"type":"section","text":{"type":"mrkdwn","text":"```\nRepository: ${{ github.repository }} \nPR: ${{ github.event.pull_request.number }}\nTitle: ${{ github.event.pull_request.title }}```"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]}]}'
