@@ -24,3 +24,12 @@ on:
 jobs:
   call-workflow:
     uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
+    secrets:
+      AWS_ROLE_REGION: ${{ secrets.AWS_ROLE_REGION }}
+      AWS_CODE_MANAGER_ROLE: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+      AWS_ROLE_SESSION_DURATION: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+      AWS_CODEARTIFACT_REGION: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+      AWS_CODEARTIFACT_DOMAIN: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+      AWS_CODEARTIFACT_OWNER: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
+      CODECOV_REPO_TOKEN: ${{ secrets.CODECOV_REPO_TOKEN }}
+      SLACK_REVIEW_NOTIFICATION_WEBHOOK: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
