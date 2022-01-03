@@ -9,4 +9,4 @@ on:
 
 jobs:
   call-workflow:
-    uses: dshare-inc/.github/workflow-templates/auto-assign.yml@main
+    uses: dshare-inc/.github/.github/workflows/auto-assign.yml@main

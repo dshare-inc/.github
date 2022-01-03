@@ -11,5 +11,5 @@ on:
 
 jobs:
   call-workflow:
-    uses: dshare-inc/.github/workflow-templates/hotfix-emergency-approve.yml@main
+    uses: dshare-inc/.github/.github/workflows/hotfix-emergency-approve.yml@main
 
