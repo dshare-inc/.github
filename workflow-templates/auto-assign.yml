@@ -8,8 +8,5 @@ on:
       - ready_for_review
 
 jobs:
-  add-reviews:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Assign
-        uses: kentaro-m/auto-assign-action@v1.2.0
+  call-workflow:
+    uses: dshare-inc/.github/workflow-templates/auto-assign.yml@main

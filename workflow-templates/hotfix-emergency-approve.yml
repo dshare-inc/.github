@@ -1,0 +1,15 @@
+name: 🚨 Hotfix Fast-track
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - closed
+      - labeled
+      - unlabeled
+
+jobs:
+  call-workflow:
+    uses: dshare-inc/.github/workflow-templates/hotfix-emergency-approve.yml@main
+
