@@ -21,10 +21,6 @@ on:
       - ready_for_review
   workflow_dispatch:
 
-concurrency:
-  group: check-gradle-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
-
 jobs:
   call-workflow:
     uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
