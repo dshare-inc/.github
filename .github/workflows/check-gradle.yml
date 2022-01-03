@@ -1,0 +1,353 @@
+name: ✅ Check Gradle (Test, Coverage, Lint)
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        type: string
+        description: 'Java version (default is 11)'
+        default: '11'
+        required: false
+      java_distribution:
+        type: string
+        description: 'Java distribution (default is adopt)'
+        default: 'adopt'
+        required: false
+      clean_build:
+        type: boolean
+        description: 'Build after clean'
+        default: true
+        required: false
+      codecov_report:
+        type: string
+        description: 'Codecov.io report xml path (jacoco)'
+        default: 'build/reports/jacoco/report.xml'
+        required: false
+      codecov_env:
+        type: string
+        description: 'Codecov.io environment (phase)'
+        default: 'test'
+        required: false
+      codecov_flag:
+        type: string
+        description: 'Codecov.io flags'
+        default: 'unit,integration'
+        required: false
+
+env:
+  JAVA_VERSION: ${{ github.event.inputs.java_version == null && '11' || github.events.inputs.java_version }}
+  JAVA_DISTRIBUTION: ${{ github.event.inputs.java_distribution == null && 'adopt' || github.events.inputs.java_distribution }}
+  CLEAN_BUILD: ${{ github.event.inputs.clean_build == null && true || github.events.inputs.clean_build }}
+  CODECOV_REPORT: ${{ github.event.inputs.codecov_report == null && 'build/reports/jacoco/report.xml' || github.events.inputs.codecov_report }}
+  CODECOV_ENV: ${{ github.event.inputs.codecov_env == null && 'test' || github.events.inputs.codecov_env }}
+  CODECOV_FLAGS: ${{ github.event.inputs.codecov_flag == null && 'unit,integration' || github.events.inputs.codecov_flag }}
+
+concurrency:
+  group: check-gradle-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  NotifyAction:
+    name: 'Notification (Action)'
+    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find Comment
+        uses: peter-evans/find-comment@v1
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle)'
+          direction: last
+
+      - name: Create PR Comment
+        if: ${{ steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🏃 테스트를 진행중입니다!
+            지금 `PR-${{ github.event.pull_request.number }}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
+            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
+
+            by dshare-bot, PR COMMENT (check-gradle)
+
+      - name: Update PR Comment
+        if: ${{ steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### 🏃 다시 테스트를 진행중입니다! 😧
+            지금 `PR-${{ github.event.pull_request.number}}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
+            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
+
+            by dshare-bot, PR COMMENT (check-gradle)
+
+  Tests:
+    name: 'Tests (with Lint, Coverage Report)'
+    needs: [ NotifyAction ]
+    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
+    runs-on: actions-runner-system
+    outputs:
+      status: ${{ job.status }}
+      clean_result: ${{ steps.clean.outputs.CLEAN_RESULT }}
+      build_result: ${{ steps.build.outputs.BUILD_RESULT }}
+      test_result: ${{ steps.test.outputs.TEST_RESULT }}
+    steps:
+      - name: Checkout Pull Request VCS
+        uses: actions/checkout@v2
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Checkout VCS (Non PR)
+        uses: actions/checkout@v2
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          architecture: x64
+          cache: gradle
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: AWS AssumeRole (Auth)
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_ROLE_REGION }}
+          role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+          role-duration-seconds: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+
+      - name: AWS CodeArtifact Authentication (Gradle)
+        uses: dshare-inc/actions-codeartifact-auth@1.0.1
+        with:
+          region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+          domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+          owner: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
+          type: gradle
+          repo: gradle
+
+      - name: Clean
+        if: ${{ env.CLEAN_BUILD == 'true' }}
+        id: clean
+        run: |
+          CLEAN_RESULT="$(./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          echo "$CLEAN_RESULT"
+
+          CLEAN_RESULT="${CLEAN_RESULT//'%'/'%25'}"
+          CLEAN_RESULT="${CLEAN_RESULT//$'\n'/'%0A'}"
+          CLEAN_RESULT="${CLEAN_RESULT//$'\r'/'%0D'}"
+          CLEAN_RESULT="$(echo $CLEAN_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
+          echo "::set-output name=CLEAN_RESULT::$(echo $CLEAN_RESULT)"
+
+      - name: Build
+        id: build
+        run: |
+          BUILD_RESULT="$(./gradlew --console verbose build -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          echo "$BUILD_RESULT"
+
+          BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
+          BUILD_RESULT="${BUILD_RESULT//$'\n'/'%0A'}"
+          BUILD_RESULT="${BUILD_RESULT//$'\r'/'%0D'}"
+          BUILD_RESULT="$(echo $BUILD_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
+          echo "::set-output name=BUILD_RESULT::$(echo $BUILD_RESULT)"
+
+      - name: Tests
+        if: ${{ always() }}
+        id: test
+        run: |
+          TEST_RESULT="$(./gradlew --console verbose test jacocoTestReport -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          echo "$TEST_RESULT"
+
+          TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
+          TEST_RESULT="${TEST_RESULT//$'\n'/'%0A'}"
+          TEST_RESULT="${TEST_RESULT//$'\r'/'%0D'}"
+          TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
+          echo "::set-output name=TEST_RESULT::$(echo $TEST_RESULT)"
+
+      - name: Add Code Coverage Report
+        uses: codecov/codecov-action@v1
+        if: ${{ always() }}
+        with:
+          token: ${{ secrets.CODECOV_REPO_TOKEN }}
+          flags: ${{ env.CODECOV_FLAGS }}
+          fail_ci_if_error: false
+          verbose: false
+          env_vars: ${{ env.CODECOV_ENV }}
+          files: ${{ env.CODECOV_REPORT }}
+
+  NotifyResult:
+    needs: [ Tests ]
+    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+    name: 'Notification (Result)'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Succeed (Slack PR)
+        if: ${{ needs.Tests.outputs.status == 'success' && github.event_name == 'pull_request' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ 테스트 및 검증 성공*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *PR: * `${{ github.event.pull_request.number }}`\n> *Name: *: ${{ github.event.pull_request.title }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","text":"PR로 바로가기","emoji":true},"value":"go_to_url","action_id":"goto-url", "url": "${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+
+      - name: Failed (Slack PR)
+        if: ${{ needs.Tests.outputs.status == 'failure' && github.event_name == 'pull_request' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ 테스트 및 검증 실패*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *PR: * `${{ github.event.pull_request.number }}`\n> *Name: *: ${{ github.event.pull_request.title }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","text":"PR로 바로가기","emoji":true},"value":"go_to_url","action_id":"goto-url", "url": "${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+
+      - name: Succeed (Slack)
+        if: ${{ needs.Tests.outputs.status == 'success' && github.event_name != 'pull_request' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ 테스트 및 검증 성공*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *브랜치: * `${{ github.ref }}`"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+
+      - name: Failed (Slack)
+        if: ${{ needs.Tests.outputs.status == 'failure' && github.event_name != 'pull_request' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ 테스트 및 검증 실패*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *브랜치: * `${{ github.ref }}`"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v1
+        id: fc
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle)'
+          direction: last
+
+      - name: Succeed (Create PR Comment)
+        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'success' && steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ✅ 테스트에 성공했습니다!
+            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ needs.Tests.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ needs.Tests.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ needs.Tests.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle)
+
+      - name: Succeed (Update PR Comment)
+        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'success' && steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### ✅ 테스트에 성공했습니다!
+            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ needs.Tests.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ needs.Tests.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ needs.Tests.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle)
+
+      - name: Failed (Create PR Comment)
+        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'failure' && steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ❌ 테스트에 실패하였습니다!
+            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ needs.Tests.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ needs.Tests.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ needs.Tests.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle)
+
+      - name: Failed (Update PR Comment)
+        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'failure' && steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### ❌ 테스트에 실패하였습니다!
+            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ needs.Tests.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ needs.Tests.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ needs.Tests.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle)

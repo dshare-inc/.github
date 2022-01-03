@@ -1,0 +1,29 @@
+name: ✅ Check Gradle (Test, Coverage, Lint)
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'master'
+      - 'develop'
+      - 'feature/*'
+    tags:
+      - '*-*.*.*'
+      - '*-*.*.*-*'
+      - '*.*.*-*'
+      - '*.*.*'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
+  workflow_dispatch:
+
+concurrency:
+  group: check-gradle-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  call-workflow:
+    uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
