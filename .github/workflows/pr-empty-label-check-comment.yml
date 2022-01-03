@@ -1,0 +1,23 @@
+name: '🏷 Empty Label'
+
+on:
+  workflow_call:
+
+concurrency:
+  group: empty-label-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  Label:
+    name: 'Check the labels'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        if: github.event.pull_request.labels[0] != null
+        run: |
+          exit 0
+
+      - name: Fail
+        if: github.event.pull_request.labels[0] == null
+        run: |
+          exit 1

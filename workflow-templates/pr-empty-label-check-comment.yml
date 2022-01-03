@@ -10,16 +10,5 @@ on:
       - unlabeled
 
 jobs:
-  Label:
-    name: Check Label
-    runs-on: ubuntu-latest
-    steps:
-      - name: Success
-        if: github.event.pull_request.labels[0] != null
-        run: |
-          exit 0
-
-      - name: Fail
-        if: github.event.pull_request.labels[0] == null
-        run: |
-          exit 1
+  call-workflow:
+    uses: dshare-inc/.github/.github/workflows/pr-empty-label-check-comment.yml@main
