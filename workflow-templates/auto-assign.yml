@@ -1,0 +1,15 @@
+name: '👀 Auto assign'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+
+jobs:
+  add-reviews:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign
+        uses: kentaro-m/auto-assign-action@v1.2.0
