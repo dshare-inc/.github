@@ -33,6 +33,23 @@ on:
         description: 'Codecov.io flags'
         default: 'unit,integration'
         required: false
+    secrets:
+      AWS_ROLE_REGION:
+        required: true
+      AWS_CODE_MANAGER_ROLE:
+        required: true
+      AWS_ROLE_SESSION_DURATION:
+        required: true
+      AWS_CODEARTIFACT_REGION:
+        required: true
+      AWS_CODEARTIFACT_DOMAIN:
+        required: true
+      AWS_CODEARTIFACT_OWNER:
+        required: true
+      CODECOV_REPO_TOKEN:
+        required: true
+      SLACK_REVIEW_NOTIFICATION_WEBHOOK:
+        required: true
 
 env:
   JAVA_VERSION: ${{ github.event.inputs.java_version == null && '11' || github.events.inputs.java_version }}
