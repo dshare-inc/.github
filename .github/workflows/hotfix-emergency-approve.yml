@@ -2,13 +2,6 @@ name: 🚨 Hotfix Fast-track
 
 on:
   workflow_call:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - closed
-      - labeled
-      - unlabeled
 
 jobs:
   approve:
@@ -24,6 +17,18 @@ jobs:
             ## 🚨 Hotfix Fast-tract (Auto Review)
 
             PR ${{ github.event.pull_request.number }} 에 대한 리뷰가 자동으로 진행되었습니다.
+
+      - name: Cancel check workflows (gradle)
+        continue-on-error: true
+        with:
+          workflow_id: 'check-gradle.yml'
+          access_token: ${{ github.token }}
+
+      - name: Cancel check workflows (yarn)
+        continue-on-error: true
+        with:
+          workflow_id: 'check-yarn.yml'
+          access_token: ${{ github.token }}
 
       - name: Notification
         uses: slackapi/slack-github-action@v1.16.0

@@ -1,16 +1,11 @@
 name: '👀 Auto assign'
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - ready_for_review
+  workflow_call:
 
 jobs:
   add-reviews:
     runs-on: ubuntu-latest
-    needs: [ check-file ]
     steps:
       - name: Assign
         uses: kentaro-m/auto-assign-action@v1.2.0
