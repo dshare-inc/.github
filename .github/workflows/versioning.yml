@@ -1,0 +1,142 @@
+name: 🔖 Versioning
+
+on:
+  workflow_call:
+    inputs:
+      use_module:
+        description: 'Use sub-module (path)'
+        type: boolean
+        required: false
+        default: 'false'
+      module:
+        description: 'Choose the module for the prefix of version'
+        required: false
+        type: string
+      suffix:
+        description: 'Version suffix (e.g. rc, nightly)'
+        required: false
+        type: string
+      bump:
+        description: 'Bump version type (using semver 2.0.0)'
+        required: true
+        type: string
+    secrets:
+      GIT_TOKEN:
+        required: true
+
+concurrency:
+  group: versioning-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  Versioning:
+    name: Versioning (Tag)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GIT_TOKEN }}
+          ref: ${{ github.ref }}
+          fetch-depth: 80
+
+      - name: Check the module
+        run: |
+          if [ "${{ github.event.inputs.use_module }}" = 'true' ] && [ "${{ github.event.inputs.module }}" != 'Please select the module' ]; then
+            exit 0
+          else
+            if [ "${{ github.event.inputs.use_module }}" = 'false' ]; then
+              exit 0
+            else
+              echo "Wrong version!"
+              exit 1
+            fi
+          fi
+
+      - name: Check the bump
+        run: |
+          if [ "${{ github.event.inputs.bump }}" != "${{ github.event.inputs.bump_check }}" ]; then
+            echo "Wrong bump type(with check type)"
+            exit 1
+          else
+            exit 0
+          fi
+
+      - name: Get Previous Tag
+        id: original
+        run: |
+          if [[ "${{ github.event.inputs.use_module }}" = 'true' ]]; then
+            ORIGINAL=`git describe --abbrev=0 --tags --match "${{ github.event.inputs.module }}-[0-9]**" 2> /dev/null` || true
+
+            if [[ -z "$ORIGINAL" ]]; then
+              ORIGINAL="${{ github.event.inputs.module }}-0.0.1"
+            fi
+
+            if [[ ! -z "${{ github.event.inputs.suffix }}" ]]; then
+              ORIGINAL="$ORIGINAL-${{ github.event.inputs.suffix}}"
+            fi
+
+            echo "::set-output name=result::$ORIGINAL"
+          else
+            ORIGINAL=`git describe --abbrev=0 --tags --match "[0-9]**" 2> /dev/null` || true
+
+            if [[ -z "$ORIGINAL" ]]; then
+              ORIGINAL="0.0.0"
+            fi
+
+            if [[ ! -z "${{ github.event.inputs.suffix }}" ]]; then
+              ORIGINAL="$ORIGINAL-${{ github.event.inputs.suffix}}"
+            fi
+
+            echo "::set-output name=result::$ORIGINAL"
+          fi
+
+      - name: Generate Version
+        id: version
+        uses: dshare-inc/actions-semver@1.0.3
+        with:
+          version: ${{ steps.original.outputs.result }}
+          return_with_suffix: false
+          return_with_prefix: true
+          method: ${{ github.event.inputs.bump }}
+
+      - name: Check package.json
+        id: nodejs
+        run: |
+          if [ -f "package.json" ]; then
+            echo "::set-output name=result::true"
+          else
+            echo "::set-output name=result::false"
+          fi
+
+          exit 0
+
+      - name: Generate NodeJS Version
+        id: version-node
+        uses: dshare-inc/actions-semver@1.0.3
+        if: ${{ steps.nodejs.outputs.result == 'true' }}
+        with:
+          version: ${{ steps.original.outputs.result }}
+          return_with_suffix: false
+          return_with_prefix: false
+          method: ${{ github.event.inputs.bump }}
+
+      - name: Bump up NodeJS Version and Push to git
+        if: ${{ steps.nodejs.outputs.result == 'true' }}
+        run: |
+          if [ "${{ github.event.inputs.use_module }}" = 'true' ]; then
+            cd ${{ github.event.inputs.module }}
+          fi
+          npm version ${{ steps.version-node.outputs.version }} --no-git-tag-version
+          git config user.name "${{ secrets.GIT_USER_NAME }}"
+          git config user.email "${{ secrets.GIT_USER_MAIL }}"
+          git add package.json
+          git commit -m ":bookmark: Update package.json version by dshare-inc bot"
+          git push origin ${{ github.event.repository.default_branch }} --force
+
+      - name: Tag Push
+        run: |
+          git config user.name "${{ secrets.GIT_USER_NAME }}"
+          git config user.email "${{ secrets.GIT_USER_MAIL }}"
+          git tag -a ${{ steps.version.outputs.version }} -m "Add version ${{ steps.version.outputs.version }}"
+          git push origin ${{ steps.version.outputs.version }}

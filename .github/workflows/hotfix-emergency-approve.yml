@@ -4,7 +4,27 @@ on:
   workflow_call:
 
 jobs:
+  revoke:
+    name: Revoke the review
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+    steps:
+      - name: Revoke pull request
+        uses: andrewmusgrave/automatic-pull-request-review@0.0.5
+        with:
+          repo-token: ${{ github.token }}
+          event: DISMISS
+
+      - name: Notification
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*😧 핫픽스가 제거되었습니다.*"}},{"type":"section","text":{"type":"mrkdwn","text":"```\nRepository: ${{ github.repository }} \nPR: ${{ github.event.pull_request.number }}\nTitle: ${{ github.event.pull_request.title }}```"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]}]}'
+
   approve:
+    name: Approve the PR
     runs-on: ubuntu-latest
     if: ${{ contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
     steps:
@@ -13,10 +33,6 @@ jobs:
         with:
           repo-token: ${{ github.token }}
           event: APPROVE
-          body: |
-            ## 🚨 Hotfix Fast-tract (Auto Review)
-
-            PR ${{ github.event.pull_request.number }} 에 대한 리뷰가 자동으로 진행되었습니다.
 
       - name: Notification
         uses: slackapi/slack-github-action@v1.16.0

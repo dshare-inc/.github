@@ -5,6 +5,7 @@ on:
 
 jobs:
   add-reviews:
+    name: Add reviews
     runs-on: ubuntu-latest
     steps:
       - name: Assign

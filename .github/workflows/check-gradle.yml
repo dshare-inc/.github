@@ -60,7 +60,7 @@ env:
   CODECOV_FLAGS: ${{ github.event.inputs.codecov_flag == null && 'unit,integration' || github.events.inputs.codecov_flag }}
 
 concurrency:
-  group: check-gradle-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
+  group: check-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -104,7 +104,6 @@ jobs:
 
   Tests:
     name: 'Tests (with Lint, Coverage Report)'
-    needs: [ NotifyAction ]
     if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
     runs-on: actions-runner-system
     outputs:
@@ -119,7 +118,6 @@ jobs:
         with:
           token: ${{ github.token }}
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
 
       - name: Checkout VCS (Non PR)
         uses: actions/checkout@v2
@@ -127,7 +125,6 @@ jobs:
         with:
           token: ${{ github.token }}
           ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Set up JDK
         uses: actions/setup-java@v2
@@ -213,7 +210,7 @@ jobs:
           files: ${{ env.CODECOV_REPORT }}
 
   NotifyResult:
-    needs: [ Tests ]
+    needs: [ NotifyAction, Tests ]
     if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
     name: 'Notification (Result)'
     runs-on: ubuntu-latest
