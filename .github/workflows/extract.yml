@@ -1,0 +1,121 @@
+name: '🏋️‍ Extract'
+
+on:
+  workflow_call:
+    outputs:
+      tag:
+        description: 'Tag'
+      tag_module:
+        description: 'Tag module'
+      pr:
+        description: 'Pull request number'
+      pr_module:
+        description: 'Pull request(label) module'
+
+jobs:
+  ExtractTag:
+    name: 'Extract the tag'
+    steps:
+      - name: Extract Tag
+        id: tag_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.payload.ref === undefined || context.payload.ref === null || context.payload.ref.match(/refs\/tags\//) === null) {
+              return '';
+            }
+            return context.payload.ref.replace(/refs\/tags\/(?:([A-z0-9-_]+)-|)([0-9]+\.[0-9]+\.[0-9]+)$/, '$2');
+
+      - name: Extract Tag Replace Quote
+        id: tag
+        run: |
+          ITEM=`echo "${{ steps.tag_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$ITEM"
+
+  ExtractModuleFromTag:
+    name: 'Extract the module from a tag'
+    steps:
+      - name: Extract Module from Tag
+        id: module_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.payload.ref === undefined || context.payload.ref === null || context.payload.ref.match(/refs\/tags\//) === null) {
+              return null;
+            }
+
+            return context.payload.ref.replace(/refs\/tags\/([A-z0-9-_]+)-[0-9]+\.[0-9]+\.[0-9]+$/, '$1');
+      - name: Extract Module from Tag Replace Quote
+        id: module
+        run: |
+          ITEM=`echo "${{ steps.module_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$ITEM"
+
+  ExtractPR:
+    name: 'Extract the PR'
+    steps:
+      - name: Extract PR Number
+        id: pull_request_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.issue === undefined || context.issue === null || context.issue.number === undefined || context.issue.number === null) {
+              return null;
+            }
+            return context.issue.number;
+
+      - name: Extract PR Number Replace Quote
+        id: pull_request
+        run: |
+          ITEM=`echo "${{ steps.pull_request_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$ITEM"
+
+  ExtractModuleFromPR:
+    name: 'Extract the module from a PR Label'
+    steps:
+      - name: Extract PR Label Module
+        id: pr_module_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+          EVENT: ${{ github.event.action }}
+          EVENT_NAME: ${{ github.event_name }}
+          LABEL_NAME: ${{ github.event.label.name }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (process.env.EVENT_NAME == 'push') {
+              return null;
+            }
+
+            if (process.env.EVENT == 'unlabeled' && process.env.LABEL_NAME.match(/^deploy-(.*?) 🚀$/)) {
+              return process.env.LABEL_NAME.match(/^deploy-(.*?) 🚀$/)[1];
+            }
+
+            try {
+              const labels = JSON.parse(process.env.LABELS).map(l => l.name);
+              if (labels.filter(l => l.match(/^deploy-(.*?) 🚀$/)).length < 1) {
+                return null;
+              }
+
+              const deploy = labels
+                .filter(l => l.match(/^deploy-(.*?) 🚀$/))[0]
+                .match(/^deploy-(.*?) 🚀$/);
+              return deploy[1];
+            } catch (e) {
+              console.error(e);
+              return null;
+            }
+
+      - name: Extract PR Label Module Replace Quote
+        id: pr_module
+        run: |
+          PR_MODULE=`echo "${{ steps.pr_module_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$PR_MODULE"
