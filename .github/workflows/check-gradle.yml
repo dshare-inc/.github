@@ -104,7 +104,7 @@ jobs:
 
   Tests:
     name: 'Tests (with Lint, Coverage Report)'
-    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
+    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨') }}
     runs-on: actions-runner-system
     outputs:
       status: ${{ job.status }}
