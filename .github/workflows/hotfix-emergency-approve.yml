@@ -10,7 +10,7 @@ jobs:
     if: ${{  github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨' }}
     steps:
       - name: Revoke pull request
-        uses: andrewmusgrave/automatic-pull-request-review@0.0.5
+        uses: andrewmusgrave/automatic-pull-request-review@0.1.0
         with:
           repo-token: ${{ github.token }}
           event: DISMISS
@@ -30,7 +30,7 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
     steps:
       - name: Approve pull request
-        uses: andrewmusgrave/automatic-pull-request-review@0.0.5
+        uses: andrewmusgrave/automatic-pull-request-review@0.1.0
         with:
           repo-token: ${{ github.token }}
           event: APPROVE
