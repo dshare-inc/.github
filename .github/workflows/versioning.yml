@@ -5,7 +5,7 @@ on:
     inputs:
       use_module:
         description: 'Use sub-module (path)'
-        type: boolean
+        type: string
         required: false
         default: 'false'
       module:
