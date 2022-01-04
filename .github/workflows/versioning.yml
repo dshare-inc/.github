@@ -20,6 +20,10 @@ on:
         description: 'Bump version type (using semver 2.0.0)'
         required: true
         type: string
+      bump_check:
+        description: 'Bump check'
+        required: true
+        type: string
     secrets:
       GIT_TOKEN:
         required: true
