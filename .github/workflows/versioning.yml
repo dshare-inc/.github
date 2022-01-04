@@ -42,7 +42,7 @@ jobs:
         with:
           token: ${{ secrets.GIT_TOKEN }}
           ref: ${{ github.ref }}
-          fetch-depth: 80
+          fetch-depth: 0
 
       - name: Check the module
         run: |
