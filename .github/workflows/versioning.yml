@@ -92,6 +92,7 @@ jobs:
               ORIGINAL="$ORIGINAL-${{ github.event.inputs.suffix}}"
             fi
 
+            echo "$ORIGINAL"
             echo "::set-output name=result::$ORIGINAL"
           fi
 
