@@ -7,7 +7,7 @@ jobs:
   revoke:
     name: Revoke the review
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+    if: ${{  github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨' }}
     steps:
       - name: Revoke pull request
         uses: andrewmusgrave/automatic-pull-request-review@0.0.5
