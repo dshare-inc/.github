@@ -27,6 +27,10 @@ on:
     secrets:
       GIT_TOKEN:
         required: true
+      GIT_USER_NAME:
+        required: true
+      GIT_USER_MAIL:
+        required: true
 
 concurrency:
   group: versioning-${{ github.repository }}-${{ github.ref }}
