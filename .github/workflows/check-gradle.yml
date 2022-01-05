@@ -267,21 +267,6 @@ jobs:
             ### ✅ 테스트 `${{ matrix.gradle.name }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
-            ### 🧹 Clean
-            ```
-            ${{ steps.clean.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ steps.build.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ steps.test.outputs.test_result }}
-            ```
-
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Succeed (Update PR Comment)
@@ -295,21 +280,6 @@ jobs:
             ### ✅ 테스트 `${{ matrix.gradle.name }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
-            ### 🧹 Clean
-            ```
-            ${{ steps.clean.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ steps.build.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ steps.test.outputs.test_result }}
-            ```
-
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Failed (Create PR Comment)
@@ -321,11 +291,6 @@ jobs:
           body: |
             ### ❌ 테스트에 `${{ matrix.gradle.name }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ steps.clean.outputs.clean_result }}
-            ```
 
             ### 💾 Build
             ```
@@ -349,11 +314,6 @@ jobs:
           body: |
             ### ❌ 테스트에 `${{ matrix.gradle.name }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ steps.clean.outputs.clean_result }}
-            ```
 
             ### 💾 Build
             ```
@@ -393,6 +353,10 @@ jobs:
             		{
             			"type": "section",
             			"fields": [
+                            {
+                            	"type": "mrkdwn",
+                            	"text": "> *${{ github.event_name == 'pull_request' && 'PR Title' || 'Commit' }}:*\n> ${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.sha }}"
+                            },
             				{
             					"type": "mrkdwn",
             					"text": "> *Repository:*\n> ${{ github.repository }}"
@@ -400,10 +364,6 @@ jobs:
             				{
             					"type": "mrkdwn",
             					"text": "> *${{ github.event_name == 'pull_request' && 'PR Number' || 'Branch' }}:*\n> ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}"
-            				},
-            				{
-            					"type": "mrkdwn",
-            					"text": "> *${{ github.event_name == 'pull_request' && 'PR Title' || 'Commit' }}:*\n> ${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.sha }}"
             				}
             			]
             		},
