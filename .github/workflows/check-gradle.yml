@@ -13,25 +13,15 @@ on:
         description: 'Java distribution (default is adopt)'
         default: 'adopt'
         required: false
-      test_commands:
+      commands:
         type: string
-        description: 'Gradle test command. split by ","'
-        default: 'test'
+        description: 'Gradle test command. split by ",". build and code coverage report is @.'
+        default: 'test jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml'
         required: true
-      build_exclude_commands:
-        type: string
-        description: 'Build exclude commands. default is -x test'
-        default: '-x test'
-        required: false
       clean_build:
         type: boolean
         description: 'Build after clean'
         default: true
-        required: false
-      codecov_report:
-        type: string
-        description: 'Codecov.io report xml path (jacoco)'
-        default: 'build/reports/jacoco/report.xml'
         required: false
       codecov_env:
         type: string
@@ -62,7 +52,6 @@ env:
   JAVA_VERSION: ${{ inputs.java_version == null && '11' || inputs.java_version }}
   JAVA_DISTRIBUTION: ${{ inputs.java_distribution == null && 'adopt' || inputs.java_distribution }}
   CLEAN_BUILD: ${{ inputs.clean_build == null && true || inputs.clean_build }}
-  CODECOV_REPORT: ${{ inputs.codecov_report == null && 'build/reports/jacoco/report.xml' || inputs.codecov_report }}
   CODECOV_ENV: ${{ inputs.codecov_env == null && 'test' || inputs.codecov_env }}
 
 concurrency:
@@ -80,7 +69,7 @@ jobs:
         uses: actions/github-script@v5
         id: extract
         env:
-          MATRIX: ${{ inputs.test_commands }}
+          MATRIX: ${{ inputs.commands }}
         with:
           result-encoding: string
           script: |
@@ -92,9 +81,17 @@ jobs:
               throw Error('Undefined matrix');
             }
 
-            return JSON.stringify({
-              item: MATRIX.split(',').map(item => item.trim())
-            })
+            return JSON.stringify(MATRIX.split(',')
+              .map(item => item.trim())
+              .map(item => {
+                const result = item.split('@');
+                return {
+                  test: result[0].trim(),
+                  build: result[1].trim(),
+                  report: result[2].trim()
+                }
+              })
+            )
       - name: Output
         run: |
           echo "${{ steps.extract.outputs.result }}"
@@ -105,8 +102,7 @@ jobs:
     needs:
       - Matrix
     strategy:
-      matrix:
-        gradle: ${{ fromJson(needs.Matrix.outputs.matrix).item }}
+      matrix: ${{ fromJson(needs.Matrix.outputs.matrix) }}
     runs-on: actions-runner-system
     timeout-minutes: 16
     outputs:
@@ -127,11 +123,11 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 🏃 테스트 `${{ matrix.gradle }}` 를 진행중입니다!
+            ### 🏃 테스트 `${{ matrix.test }}` 를 진행중입니다!
             지금 `PR-${{ github.event.pull_request.number }}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
             테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
       - name: Update PR Comment
         if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') && steps.fc.outputs.comment-id != '' }}
@@ -140,11 +136,11 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### 🏃 다시 테스트 `${{ matrix.gradle }}` 를 진행중입니다! 😧
+            ### 🏃 다시 테스트 `${{ matrix.test }}` 를 진행중입니다! 😧
             지금 `PR-${{ github.event.pull_request.number}}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
             테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
       - name: Checkout Pull Request VCS
         uses: actions/checkout@v2
@@ -210,7 +206,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          BUILD_RESULT="$(./gradlew --console verbose build ${{ inputs.build_exclude_commands }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          BUILD_RESULT="$(./gradlew --console verbose build ${{ matrix.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$BUILD_RESULT"
 
           BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
@@ -224,7 +220,7 @@ jobs:
         id: test
         continue-on-error: true
         run: |
-          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle }} jacocoTestReport -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$TEST_RESULT"
 
           TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
@@ -233,26 +229,43 @@ jobs:
           TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
           echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
-      - name: Add Code Coverage Report
-        uses: codecov/codecov-action@v1
-        if: ${{ always() }}
+    - name: Upload code coverage report
+      uses: actions/upload-artifact@v2
+      continue-on-error: true
+      with:
+        name: ${{ matrix.test }}-report
+        path: ${{ matrix.report }}
+        retention-days: 21
+        if-no-files-found: error
+
+    - name: Add Code Coverage Report
+      uses: codecov/codecov-action@v2
+      if: ${{ always() }}
+      continue-on-error: true
+      with:
+        token: ${{ secrets.CODECOV_REPO_TOKEN }}
+        flags: ${{ matrix.test }}
+        name: ${{ matrix.test }}
+        files: ${{ matrix.report }}
+
+      - name: Find Comment (After)
+        uses: peter-evans/find-comment@v1
+        id: fc_after
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         with:
-          token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          flags: ${{ matrix.gradle }}
-          fail_ci_if_error: false
-          verbose: false
-          env_vars: ${{ env.CODECOV_ENV }}
-          files: ${{ env.CODECOV_REPORT }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}'
+          direction: last
 
       - name: Succeed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc.outputs.comment-id == '' }}
+        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id == '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### ✅ 테스트 `${{ matrix.gradle }}` 에 성공했습니다!
+            ### ✅ 테스트 `${{ matrix.test }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
             ### 🧹 Clean
@@ -270,17 +283,17 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
       - name: Succeed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc.outputs.comment-id != '' }}
+        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### ✅ 테스트 `${{ matrix.gradle }}` 에 성공했습니다!
+            ### ✅ 테스트 `${{ matrix.test }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
             ### 🧹 Clean
@@ -298,16 +311,16 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
       - name: Failed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc.outputs.comment-id == '' }}
+        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### ❌ 테스트에 `${{ matrix.gradle }}` 실패하였습니다!
+            ### ❌ 테스트에 `${{ matrix.test }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
             ### 🧹 Clean
@@ -325,17 +338,17 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
       - name: Failed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc.outputs.comment-id != '' }}
+        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### ❌ 테스트에 `${{ matrix.gradle }}` 실패하였습니다!
+            ### ❌ 테스트에 `${{ matrix.test }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
             ### 🧹 Clean
@@ -353,7 +366,7 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
 
   NotifyResult:
     needs:

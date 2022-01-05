@@ -25,8 +25,7 @@ jobs:
   workflow:
     uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
     with:
-      test_commands: 'test'
-      build_exclude_commands: '-x test'
+      commands: 'test jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml'
     secrets:
       AWS_ROLE_REGION: ${{ secrets.AWS_ROLE_REGION }}
       AWS_CODE_MANAGER_ROLE: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
