@@ -159,16 +159,6 @@ jobs:
           architecture: x64
           cache: gradle
 
-      - name: Cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: AWS AssumeRole (Auth)
         uses: aws-actions/configure-aws-credentials@v1
         with:
