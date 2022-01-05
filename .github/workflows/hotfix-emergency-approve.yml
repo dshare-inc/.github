@@ -23,6 +23,7 @@ jobs:
         with:
           repo-token: ${{ github.token }}
           event: DISMISS
+          body: '😌 Ok, I think this pull request does not need to be fast-track!'
 
       - name: Notification
         uses: slackapi/slack-github-action@v1.16.0
