@@ -16,7 +16,7 @@ on:
       commands:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
-        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml @ test'
+        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco/ @ report.xml @ test'
         required: false
       clean_build:
         type: boolean
@@ -90,7 +90,8 @@ jobs:
                   result: result[1].trim(),
                   build: result[2].trim(),
                   report: result[3].trim(),
-                  name: result[4].trim()
+                  file: result[4].trim(),
+                  name: result[5].trim()
                 };
               })
             });
@@ -211,13 +212,18 @@ jobs:
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
+      - name: Change report name
+        if: ${{ (success() || failure()) && matrix.gradle.file != 'report.xml' }}
+        run: |
+          cp ${{ matrix.gradle.report }}/${{ matrix.gradle.file }} ${{ matrix.gradle.report }}/report.xml
+
       - name: Upload code coverage report
         uses: actions/upload-artifact@v2
         if: ${{ (success() || failure()) }}
         with:
-          name: ${{ matrix.gradle.name }}-codecov-report
-          path: ${{ matrix.gradle.report }}
-          retention-days: 7
+          name: ${{ matrix.gradle.name }}-github-action-codecov-report
+          path: ${{ matrix.gradle.report }}/report.xml
+          retention-days: 1
           if-no-files-found: error
 
       - name: Parse test result
@@ -333,12 +339,8 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          files: '*-codecov-report/report.xml'
-          fail_ci_if_error: false
-          flags: test
-          env_vars: test
+          files: '*-github-action-codecov-report/report.xml'
           verbose: true
-          name: test
 
   NotifyResult:
     needs:
