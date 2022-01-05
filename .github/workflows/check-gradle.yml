@@ -117,6 +117,8 @@ jobs:
           script: |
             const { MATRIX } = process.env;
 
+            console.log(`${MATRIX} <- Input`);
+
             if (MATRIX == null || MATRIX == '') {
               throw Error('Undefined matrix');
             }
