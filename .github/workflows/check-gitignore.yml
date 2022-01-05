@@ -31,6 +31,7 @@ jobs:
           exit 0
 
       - name: Ignore .idea
+        continue-on-error: true
         run: |
           CK=$(grep -n ".idea" .gitignore)
           if [ "" = "${CK}" ]; then
@@ -41,6 +42,7 @@ jobs:
           fi
 
       - name: Ignore .vscode
+        continue-on-error: true
         run: |
           CK=$(grep -n ".vscode" .gitignore)
           if [ "" = "${CK}" ]; then
@@ -61,6 +63,7 @@ jobs:
 
       - name: Ignore gradle.properties
         if: ${{ steps.gradle.outputs.result == 'true' }}
+        continue-on-error: true
         run: |
           CK=$(grep -n "gradle.properties" .gitignore)
           if [ "" = "${CK}" ]; then
@@ -81,6 +84,7 @@ jobs:
 
       - name: Ignore .npmrc
         if: ${{ steps.npm.outputs.result == 'true' }}
+        continue-on-error: true
         run: |
           CK=$(grep -n ".npmrc" .gitignore)
           if [ "" = "${CK}" ]; then
@@ -92,6 +96,7 @@ jobs:
 
       - name: Ignore .yarnrc.yml
         if: ${{ steps.npm.outputs.result == 'true' }}
+        continue-on-error: true
         run: |
           CK=$(grep -n ".yarnrc.yml" .gitignore)
           if [ "" = "${CK}" ]; then
