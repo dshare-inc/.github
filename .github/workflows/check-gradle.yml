@@ -17,7 +17,7 @@ on:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
         default: 'test jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml'
-        required: true
+        required: false
       clean_build:
         type: boolean
         description: 'Build after clean'
