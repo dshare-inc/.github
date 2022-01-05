@@ -1,4 +1,4 @@
-name: 🚨 Hotfix Fast-track
+name: 🚨 Hotfix
 
 on:
   pull_request:
@@ -12,4 +12,6 @@ on:
 jobs:
   workflow:
     uses: dshare-inc/.github/.github/workflows/hotfix-emergency-approve.yml@main
-
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_HOTFIX_NOTIFICATION_CHANNEL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_CHANNEL }}

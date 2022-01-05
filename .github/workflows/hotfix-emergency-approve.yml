@@ -1,13 +1,22 @@
-name: 🚨 Hotfix Fast-track
+name: 🚨 Hotfix
 
 on:
   workflow_call:
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_HOTFIX_NOTIFICATION_CHANNEL:
+        required: true
+
+concurrency:
+  group: hotfix-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   revoke:
     name: Revoke the review
     runs-on: ubuntu-latest
-    if: ${{  github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨' }}
+    if: ${{ github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨' }}
     steps:
       - name: Revoke pull request
         uses: Ana06/automatic-pull-request-review@v0.1.0
@@ -18,10 +27,70 @@ jobs:
       - name: Notification
         uses: slackapi/slack-github-action@v1.16.0
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*😧 핫픽스가 제거되었습니다.*"}},{"type":"section","text":{"type":"mrkdwn","text":"```\nRepository: ${{ github.repository }} \nPR: ${{ github.event.pull_request.number }}\nTitle: ${{ github.event.pull_request.title }}```"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]}]}'
+          channel-id: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_CHANNEL }}
+          payload: |
+            {
+            	"blocks": [
+            		{
+            			"type": "section",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "*🧯 핫픽스 리뷰가 취소되었습니다.*"
+            			}
+            		},
+            		{
+            			"type": "section",
+            			"fields": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *Repository:*\n> ${{ github.repository }}"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *PR:*\n> ${{ github.event.pull_request.number }}"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *PR Title:*\n> ${{ github.event.pull_request.title }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "actions",
+            			"block_id": "actionblock789",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "📄 PR로 바로가기"
+            					},
+            					"url": "${{ format('{0}/{1}/pull/{2}', github.server_url, github.repository, github.event.pull_request.number) }}"
+            				},
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "🕵️‍ 변경 파일 바로보기"
+            					},
+            					"style": "danger",
+            					"url": "${{ format('{0}/{1}/pull/{2}/files', github.server_url, github.repository, github.event.pull_request.number) }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "context",
+            			"elements": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "*${{ github.actor }}* 님이 해당 PR을 작업하셨습니다."
+            				}
+            			]
+            		}
+            	]
+            }
 
   approve:
     name: Approve the PR
@@ -37,7 +106,73 @@ jobs:
       - name: Notification
         uses: slackapi/slack-github-action@v1.16.0
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*🚨 @channel 핫픽스가 발생하여 리뷰되었습니다.*"}},{"type":"section","text":{"type":"mrkdwn","text":"```\nRepository: ${{ github.repository }} \nPR: ${{ github.event.pull_request.number }}\nTitle: ${{ github.event.pull_request.title }}```"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]}]}'
+          channel-id: ${{ secrets.SLACK_HOTFIX_NOTIFICATION_CHANNEL }}
+          payload: |
+            {
+            	"blocks": [
+            		{
+            			"type": "section",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "*🚨 핫픽스 리뷰(Fast-track)가 수행되었습니다!*\n_@channel 리뷰 담당자는 이 Pull request가 올바른지 확인하시기 바랍니다._"
+            			}
+            		},
+            		{
+            			"type": "section",
+            			"fields": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *Repository:*\n> ${{ github.repository }}"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *PR:*\n> ${{ github.event.pull_request.number }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "divider"
+            		},
+            		{
+            			"type": "section",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "> *${{ github.event.pull_request.title }}*\n>\n>${{ github.event.pull_request.body }}"
+            			}
+            		},
+            		{
+            			"type": "actions",
+            			"block_id": "actionblock789",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "📄 PR로 바로가기"
+            					},
+            					"url": "${{ format('{0}/{1}/pull/{2}', github.server_url, github.repository, github.event.pull_request.number) }}"
+            				},
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "🕵️‍ 변경 파일 바로보기"
+            					},
+            					"style": "danger",
+            					"url": "${{ format('{0}/{1}/pull/{2}/files', github.server_url, github.repository, github.event.pull_request.number) }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "context",
+            			"elements": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "*${{ github.actor }}* 님이 해당 PR을 작업하셨습니다."
+            				}
+            			]
+            		}
+            	]
+            }
