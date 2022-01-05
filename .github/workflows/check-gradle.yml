@@ -95,7 +95,7 @@ jobs:
             });
 
   Tests:
-    name: 'Tests'
+    name: 'Tests (${{ matrix.gradle.name }})'
     if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨') }}
     needs:
       - Matrix
@@ -228,24 +228,19 @@ jobs:
           TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
           echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
+      - name: Change report name
+        continue-on-error: true
+        run: |
+          cp ${{ matrix.gradle.report }} ./${{ matrix.gradle.name }}-report.xml
+
       - name: Upload code coverage report
         uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
           name: ${{ matrix.gradle.name }}-report
-          path: ${{ matrix.gradle.report }}
-          retention-days: 21
+          path: ${{ matrix.gradle.name }}-report.xml
+          retention-days: 7
           if-no-files-found: error
-
-      - name: Add Code Coverage Report
-        uses: codecov/codecov-action@v2
-        if: ${{ always() }}
-        continue-on-error: true
-        with:
-          token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          flags: ${{ matrix.gradle.test }}
-          name: ${{ matrix.gradle.name }}
-          files: ${{ matrix.gradle.report }}
 
       - name: Find Comment (After)
         uses: peter-evans/find-comment@v1
@@ -326,6 +321,23 @@ jobs:
             ```
 
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
+
+  Codecov:
+    name: Add report (Codecov.io)
+    runs-on: ubuntu-latest
+    needs:
+      - Tests
+    if: ${{ always() }}
+    steps:
+      - name: Download files
+        uses: actions/download-artifacts@v2
+
+      - name: Add Code coverage reports
+        uses: codecov/codecov-action@v2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_REPO_TOKEN }}
 
   NotifyResult:
     needs:
