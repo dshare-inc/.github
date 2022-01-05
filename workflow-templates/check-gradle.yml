@@ -26,6 +26,7 @@ jobs:
     uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
     with:
       test_commands: 'test'
+      build_exclude_commands: '-x test'
     secrets:
       AWS_ROLE_REGION: ${{ secrets.AWS_ROLE_REGION }}
       AWS_CODE_MANAGER_ROLE: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
@@ -34,4 +35,5 @@ jobs:
       AWS_CODEARTIFACT_DOMAIN: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
       AWS_CODEARTIFACT_OWNER: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
       CODECOV_REPO_TOKEN: ${{ secrets.CODECOV_REPO_TOKEN }}
-      SLACK_REVIEW_NOTIFICATION_WEBHOOK: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_REVIEW_NOTIFICATION_CHANNEL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_CHANNEL }}

@@ -18,6 +18,11 @@ on:
         description: 'Gradle test command. split by ","'
         default: 'test'
         required: true
+      build_exclude_commands:
+        type: string
+        description: 'Build exclude commands. default is -x test'
+        default: '-x test'
+        required: false
       clean_build:
         type: boolean
         description: 'Build after clean'
@@ -48,7 +53,9 @@ on:
         required: true
       CODECOV_REPO_TOKEN:
         required: true
-      SLACK_REVIEW_NOTIFICATION_WEBHOOK:
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_REVIEW_NOTIFICATION_CHANNEL:
         required: true
 
 env:
@@ -63,44 +70,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  NotifyAction:
-    name: 'Notification (Action)'
-    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Find Comment
-        uses: peter-evans/find-comment@v1
-        id: fc
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body-includes: 'by dshare-bot, PR COMMENT (check-gradle)'
-          direction: last
-
-      - name: Create PR Comment
-        if: ${{ steps.fc.outputs.comment-id == '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### 🏃 테스트를 진행중입니다!
-            지금 `PR-${{ github.event.pull_request.number }}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
-            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
-
-            by dshare-bot, PR COMMENT (check-gradle)
-
-      - name: Update PR Comment
-        if: ${{ steps.fc.outputs.comment-id != '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### 🏃 다시 테스트를 진행중입니다! 😧
-            지금 `PR-${{ github.event.pull_request.number}}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
-            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
-
-            by dshare-bot, PR COMMENT (check-gradle)
-
   Matrix:
     name: 'Matrix'
     runs-on: ubuntu-latest
@@ -139,12 +108,47 @@ jobs:
       matrix:
         gradle: ${{ fromJson(needs.Matrix.outputs.matrix).item }}
     runs-on: actions-runner-system
+    timeout-minutes: 16
     outputs:
       status: ${{ job.status }}
       clean_result: ${{ steps.clean.outputs.CLEAN_RESULT }}
       build_result: ${{ steps.build.outputs.BUILD_RESULT }}
       test_result: ${{ steps.test.outputs.TEST_RESULT }}
     steps:
+      - name: Find Comment
+        uses: peter-evans/find-comment@v1
+        id: fc
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}'
+          direction: last
+
+      - name: Create PR Comment
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') && steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🏃 테스트 `${{ matrix.gradle }}` 를 진행중입니다!
+            지금 `PR-${{ github.event.pull_request.number }}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
+            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
+      - name: Update PR Comment
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') && steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### 🏃 다시 테스트 `${{ matrix.gradle }}` 를 진행중입니다!(${{ matrix.gradle }}) 😧
+            지금 `PR-${{ github.event.pull_request.number}}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
+            테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
       - name: Checkout Pull Request VCS
         uses: actions/checkout@v2
         if: ${{ github.event_name == 'pull_request' }}
@@ -209,7 +213,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          BUILD_RESULT="$(./gradlew --console verbose build -x test -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          BUILD_RESULT="$(./gradlew --console verbose build ${{ inputs.build_exclude_commands }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$BUILD_RESULT"
 
           BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
@@ -242,159 +246,185 @@ jobs:
           env_vars: ${{ env.CODECOV_ENV }}
           files: ${{ env.CODECOV_REPORT }}
 
+      - name: Succeed (Create PR Comment)
+        if: ${{ github.event_name == 'pull_request' && steps.test.outputs.status == 'success' && steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ✅ 테스트 `${{ matrix.gradle }}` 에 성공했습니다!
+            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ steps.test.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ steps.test.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ steps.test.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
+      - name: Succeed (Update PR Comment)
+        if: ${{ github.event_name == 'pull_request' && steps.test.outputs.status == 'success' && steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### ✅ 테스트 `${{ matrix.gradle }}` 에 성공했습니다!
+            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ steps.test.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ steps.test.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ steps.test.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
+      - name: Failed (Create PR Comment)
+        if: ${{ github.event_name == 'pull_request' && steps.test.outputs.status == 'failure' && steps.fc.outputs.comment-id == '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ❌ 테스트에 `${{ matrix.gradle }}` 실패하였습니다!
+            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ steps.test.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ steps.test.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ steps.test.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
+      - name: Failed (Update PR Comment)
+        if: ${{ github.event_name == 'pull_request' && steps.test.outputs.status == 'failure' && steps.fc.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### ❌ 테스트에 `${{ matrix.gradle }}` 실패하였습니다!
+            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
+
+            ### 🧹 Clean
+            ```
+            ${{ steps.test.outputs.clean_result }}
+            ```
+
+            ### 💾 Build
+            ```
+            ${{ steps.test.outputs.build_result }}
+            ```
+
+            ### 🤖 Tests
+            ```
+            ${{ steps.test.outputs.test_result }}
+            ```
+
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}
+
   NotifyResult:
-    needs: [ NotifyAction, Tests ]
-    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+    needs:
+      - Tests
+    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
     name: 'Notification (Result)'
     runs-on: ubuntu-latest
     steps:
       - name: Succeed (Slack PR)
-        if: ${{ needs.Tests.outputs.status == 'success' && github.event_name == 'pull_request' }}
         uses: slackapi/slack-github-action@v1.16.0
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ 테스트 및 검증 성공*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *PR: * `${{ github.event.pull_request.number }}`\n> *Name: *: ${{ github.event.pull_request.title }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","text":"PR로 바로가기","emoji":true},"value":"go_to_url","action_id":"goto-url", "url": "${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
-
-      - name: Failed (Slack PR)
-        if: ${{ needs.Tests.outputs.status == 'failure' && github.event_name == 'pull_request' }}
-        uses: slackapi/slack-github-action@v1.16.0
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-        with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ 테스트 및 검증 실패*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *PR: * `${{ github.event.pull_request.number }}`\n> *Name: *: ${{ github.event.pull_request.title }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","text":"PR로 바로가기","emoji":true},"value":"go_to_url","action_id":"goto-url", "url": "${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"}]},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
-
-      - name: Succeed (Slack)
-        if: ${{ needs.Tests.outputs.status == 'success' && github.event_name != 'pull_request' }}
-        uses: slackapi/slack-github-action@v1.16.0
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-        with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ 테스트 및 검증 성공*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *브랜치: * `${{ github.ref }}`"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
-
-      - name: Failed (Slack)
-        if: ${{ needs.Tests.outputs.status == 'failure' && github.event_name != 'pull_request' }}
-        uses: slackapi/slack-github-action@v1.16.0
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_REVIEW_NOTIFICATION_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-        with:
-          payload: '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ 테스트 및 검증 실패*"}},{"type":"section","text":{"type":"mrkdwn","text":"> *레포: * ${{ github.repository }}\n> *브랜치: * `${{ github.ref }}`"}},{"type":"context","elements":[{"type":"mrkdwn","text":"*${{ github.actor }}* 님이 실행하거나 작업하였습니다."}]},{"type":"context","elements":[{"type":"mrkdwn","text":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
-
-      - name: Find Comment
-        uses: peter-evans/find-comment@v1
-        id: fc
-        if: ${{ github.event_name == 'pull_request' }}
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body-includes: 'by dshare-bot, PR COMMENT (check-gradle)'
-          direction: last
-
-      - name: Succeed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'success' && steps.fc.outputs.comment-id == '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### ✅ 테스트에 성공했습니다!
-            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ needs.Tests.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ needs.Tests.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ needs.Tests.outputs.test_result }}
-            ```
-
-            by dshare-bot, PR COMMENT (check-gradle)
-
-      - name: Succeed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'success' && steps.fc.outputs.comment-id != '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### ✅ 테스트에 성공했습니다!
-            **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ needs.Tests.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ needs.Tests.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ needs.Tests.outputs.test_result }}
-            ```
-
-            by dshare-bot, PR COMMENT (check-gradle)
-
-      - name: Failed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'failure' && steps.fc.outputs.comment-id == '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### ❌ 테스트에 실패하였습니다!
-            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ needs.Tests.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ needs.Tests.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ needs.Tests.outputs.test_result }}
-            ```
-
-            by dshare-bot, PR COMMENT (check-gradle)
-
-      - name: Failed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && needs.Tests.outputs.status == 'failure' && steps.fc.outputs.comment-id != '' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### ❌ 테스트에 실패하였습니다!
-            현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
-
-            ### 🧹 Clean
-            ```
-            ${{ needs.Tests.outputs.clean_result }}
-            ```
-
-            ### 💾 Build
-            ```
-            ${{ needs.Tests.outputs.build_result }}
-            ```
-
-            ### 🤖 Tests
-            ```
-            ${{ needs.Tests.outputs.test_result }}
-            ```
-
-            by dshare-bot, PR COMMENT (check-gradle)
+          channel-id: ${{ secrets.SLACK_REVIEW_NOTIFICATION_CHANNEL }}
+          payload: |
+            {
+            	"blocks": [
+            		{
+            			"type": "section",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "*${{ needs.Tests.result == 'success' && '✅ 테스트 및 검증 성공* _(SUCCESS)_' || '❌ 테스트 및 검증 실패* _(FAILURE)' }}\n_브랜치 또는 Pull request 검증(테스트, Lint, Code coverage)에 성공하였습니다._"
+            			}
+            		},
+            		{
+            			"type": "section",
+            			"fields": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *Repository:*\n> ${{ github.repository }}"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *${{ github.event_name == 'pull_request' && 'PR Number' || 'Branch' }}:*\n> ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *${{ github.event_name == 'pull_request' && 'PR Title' || 'Commit' }}:*\n> ${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.sha }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "actions",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"emoji": true,
+            						"text": "📄 ${{ github.event_name == 'pull_request' && 'PR로' || 'Commit으로' }} 바로가기"
+            					},
+            					"value": "go_to_pr",
+            					"url": "${{ github.event_name == 'pull_request' && '${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}' || '${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}' }}"
+            				},
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"emoji": true,
+            						"text": "🚀 Action 결과로 바로가기"
+            					},
+            					"value": "go_to_action",
+            					"url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "context",
+            			"elements": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "*${{ github.actor }}* 님이 실행 또는 해당 브랜치(PR)를 작업하셨습니다."
+            				}
+            			]
+            		}
+            	]
+            }
