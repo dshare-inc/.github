@@ -115,11 +115,11 @@ jobs:
         with:
           result-encoding: string
           script: |
+            const { MATRIX } = process.env;
+
             if (MATRIX == null) {
               throw Error('Undefined matrix');
             }
-
-            const { MATRIX } = process.env;
 
             return JSON.stringify({
               item: MATRIX.split(',').map(item => item.trim())
