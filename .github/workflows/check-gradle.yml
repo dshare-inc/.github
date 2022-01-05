@@ -111,19 +111,22 @@ jobs:
         uses: actions/github-script@v5
         id: extract
         env:
-          MATRIX: ${{ github.event.inputs.matrix }}
+          MATRIX: ${{ github.event.inputs.test_commands }}
         with:
           result-encoding: string
           script: |
             const { MATRIX } = process.env;
 
-            if (MATRIX == null) {
+            if (MATRIX == null || MATRIX == '') {
               throw Error('Undefined matrix');
             }
 
             return JSON.stringify({
               item: MATRIX.split(',').map(item => item.trim())
             })
+      - name: Output
+        run: |
+          echo "${{ steps.extract.outputs.result }}"
 
   Tests:
     name: 'Tests (with Lint, Coverage Report)'
