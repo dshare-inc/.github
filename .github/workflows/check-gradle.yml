@@ -326,6 +326,10 @@ jobs:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
           files: '*-report/code-coverage-test-report.xml'
           fail_ci_if_error: false
+          flags: test
+          env_vars: test
+          verbose: true
+          name: test
 
   NotifyResult:
     needs:
