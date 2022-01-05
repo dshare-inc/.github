@@ -16,7 +16,7 @@ on:
       commands:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
-        default: 'test jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml @ test'
+        default: 'jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml @ test'
         required: false
       clean_build:
         type: boolean
@@ -217,7 +217,6 @@ jobs:
       - name: Tests
         if: ${{ always() }}
         id: test
-        continue-on-error: true
         run: |
           TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$TEST_RESULT"
@@ -229,13 +228,13 @@ jobs:
           echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
       - name: Change report name
-        continue-on-error: true
+        if: ${{ always() }}
         run: |
           cp ${{ matrix.gradle.report }} ./code-coverage-test-report.xml
 
       - name: Upload code coverage report
         uses: actions/upload-artifact@v2
-        continue-on-error: true
+        if: ${{ always() }}
         with:
           name: ${{ matrix.gradle.name }}-report
           path: code-coverage-test-report.xml
