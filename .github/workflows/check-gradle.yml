@@ -239,7 +239,7 @@ jobs:
       - name: Find Comment (After)
         uses: peter-evans/find-comment@v1
         id: fc_after
-        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
+        if: ${{ always() && github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -247,7 +247,7 @@ jobs:
           direction: last
 
       - name: Succeed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id == '' }}
+        if: ${{ always() && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id == '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -259,7 +259,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Succeed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' }}
+        if: ${{ always() && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -272,7 +272,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Failed (Create PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' }}
+        if: ${{ always() && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -289,7 +289,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Failed (Update PR Comment)
-        if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' }}
+        if: ${{ always() && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -332,7 +332,7 @@ jobs:
   NotifyResult:
     needs:
       - Tests
-    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
+    if: ${{ always() && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨'))) }}
     name: 'Notification (Result)'
     runs-on: ubuntu-latest
     steps:
