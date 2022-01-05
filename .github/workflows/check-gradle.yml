@@ -231,14 +231,14 @@ jobs:
       - name: Change report name
         continue-on-error: true
         run: |
-          cp ${{ matrix.gradle.report }} ./${{ matrix.gradle.name }}-report.xml
+          cp ${{ matrix.gradle.report }} ./code-coverage-test-report.xml
 
       - name: Upload code coverage report
         uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
           name: ${{ matrix.gradle.name }}-report
-          path: ${{ matrix.gradle.name }}-report.xml
+          path: code-coverage-test-report.xml
           retention-days: 7
           if-no-files-found: error
 
@@ -342,7 +342,7 @@ jobs:
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          files: '*-report'
+          files: '*-report/code-coverage-test-report.xml'
 
   NotifyResult:
     needs:
