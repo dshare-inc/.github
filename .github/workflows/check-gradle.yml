@@ -194,43 +194,22 @@ jobs:
         if: ${{ env.CLEAN_BUILD == 'true' }}
         id: clean
         run: |
-          CLEAN_RESULT="$(./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
-          echo "$CLEAN_RESULT"
-
-          CLEAN_RESULT="${CLEAN_RESULT//'%'/'%25'}"
-          CLEAN_RESULT="${CLEAN_RESULT//$'\n'/'%0A'}"
-          CLEAN_RESULT="${CLEAN_RESULT//$'\r'/'%0D'}"
-          CLEAN_RESULT="$(echo $CLEAN_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=clean_result::$(echo $CLEAN_RESULT)"
+          ./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Build
         id: build
         run: |
-          BUILD_RESULT="$(./gradlew --console verbose ${{ matrix.gradle.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
-          echo "$BUILD_RESULT"
-
-          BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
-          BUILD_RESULT="${BUILD_RESULT//$'\n'/'%0A'}"
-          BUILD_RESULT="${BUILD_RESULT//$'\r'/'%0D'}"
-          BUILD_RESULT="$(echo $BUILD_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=build_result::$(echo $BUILD_RESULT)"
+          ./gradlew --console verbose ${{ matrix.gradle.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Tests
         id: test
         run: |
-          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
-          echo "$TEST_RESULT"
-
-          TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
-          TEST_RESULT="${TEST_RESULT//$'\n'/'%0A'}"
-          TEST_RESULT="${TEST_RESULT//$'\r'/'%0D'}"
-          TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=test_result::$(echo $TEST_RESULT)"
+          ./gradlew --console verbose test -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8  --parallel > test-result-console
 
       - name: Generate report
         if: ${{ always() }}
         run: |
-          ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)
+          ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Change report name
         if: ${{ always() }}
@@ -245,6 +224,17 @@ jobs:
           path: code-coverage-test-report.xml
           retention-days: 7
           if-no-files-found: error
+
+      - name: Parse test result
+        id: test
+        if: ${{ always() }}
+        run: |
+          TEST_RESULT="$(cat test-result-console)"
+          TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
+          TEST_RESULT="${TEST_RESULT//$'\n'/'%0A'}"
+          TEST_RESULT="${TEST_RESULT//$'\r'/'%0D'}"
+          TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
+          echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
       - name: Find Comment (After)
         uses: peter-evans/find-comment@v1
