@@ -346,7 +346,7 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "*${{ needs.Tests.result == 'success' && '✅ 테스트 및 검증 성공* _(SUCCESS)_' || '❌ 테스트 및 검증 실패* _(FAILURE)' }}\n_브랜치 또는 Pull request 검증(테스트, Lint, Code coverage)에 성공하였습니다._"
+            				"text": "*${{ needs.Tests.result == 'success' && '✅ 테스트 및 검증 성공* _(SUCCESS)_' || '❌ 테스트 및 검증 실패* _(FAILURE)_' }}"
             			}
             		},
             		{
