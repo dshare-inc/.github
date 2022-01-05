@@ -92,9 +92,6 @@ jobs:
                 }
               })
             )
-      - name: Output
-        run: |
-          echo "${{ steps.extract.outputs.result }}"
 
   Tests:
     name: 'Tests'
@@ -102,7 +99,8 @@ jobs:
     needs:
       - Matrix
     strategy:
-      matrix: ${{ fromJson(needs.Matrix.outputs.matrix) }}
+      matrix:
+        gradle: ${{ fromJson(needs.Matrix.outputs.matrix) }}
     runs-on: actions-runner-system
     timeout-minutes: 16
     outputs:
@@ -114,7 +112,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle }}'
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}'
           direction: last
 
       - name: Create PR Comment
@@ -123,11 +121,11 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 🏃 테스트 `${{ matrix.test }}` 를 진행중입니다!
+            ### 🏃 테스트 `${{ matrix.gradle.test }}` 를 진행중입니다!
             지금 `PR-${{ github.event.pull_request.number }}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
             테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
       - name: Update PR Comment
         if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') && steps.fc.outputs.comment-id != '' }}
@@ -136,11 +134,11 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### 🏃 다시 테스트 `${{ matrix.test }}` 를 진행중입니다! 😧
+            ### 🏃 다시 테스트 `${{ matrix.gradle.test }}` 를 진행중입니다! 😧
             지금 `PR-${{ github.event.pull_request.number}}` 에 대해 테스트를 진행하고 있습니다. 조금만 기다려주세요!
             테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
       - name: Checkout Pull Request VCS
         uses: actions/checkout@v2
@@ -206,7 +204,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          BUILD_RESULT="$(./gradlew --console verbose build ${{ matrix.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          BUILD_RESULT="$(./gradlew --console verbose build ${{ matrix.gradle.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$BUILD_RESULT"
 
           BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
@@ -220,7 +218,7 @@ jobs:
         id: test
         continue-on-error: true
         run: |
-          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$TEST_RESULT"
 
           TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
@@ -233,8 +231,8 @@ jobs:
       uses: actions/upload-artifact@v2
       continue-on-error: true
       with:
-        name: ${{ matrix.test }}-report
-        path: ${{ matrix.report }}
+        name: ${{ matrix.gradle.test }}-report
+        path: ${{ matrix.gradle.report }}
         retention-days: 21
         if-no-files-found: error
 
@@ -244,9 +242,9 @@ jobs:
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_REPO_TOKEN }}
-        flags: ${{ matrix.test }}
-        name: ${{ matrix.test }}
-        files: ${{ matrix.report }}
+        flags: ${{ matrix.gradle.test }}
+        name: ${{ matrix.gradle.test }}
+        files: ${{ matrix.gradle.report }}
 
       - name: Find Comment (After)
         uses: peter-evans/find-comment@v1
@@ -255,7 +253,7 @@ jobs:
         continue-on-error: true
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}'
+          body-includes: 'by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}'
           direction: last
 
       - name: Succeed (Create PR Comment)
@@ -265,7 +263,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### ✅ 테스트 `${{ matrix.test }}` 에 성공했습니다!
+            ### ✅ 테스트 `${{ matrix.gradle.test }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
             ### 🧹 Clean
@@ -283,7 +281,7 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
       - name: Succeed (Update PR Comment)
         if: ${{ github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' }}
@@ -293,7 +291,7 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### ✅ 테스트 `${{ matrix.test }}` 에 성공했습니다!
+            ### ✅ 테스트 `${{ matrix.gradle.test }}` 에 성공했습니다!
             **🎉 현재 시스템의 테스트가 모두 통과하였습니다.** 자세한 내역은 Action 의 `Details` 버튼을 누른 후 확인하실 수 있습니다.
 
             ### 🧹 Clean
@@ -311,7 +309,7 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
       - name: Failed (Create PR Comment)
         if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' }}
@@ -320,7 +318,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### ❌ 테스트에 `${{ matrix.test }}` 실패하였습니다!
+            ### ❌ 테스트에 `${{ matrix.gradle.test }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
             ### 🧹 Clean
@@ -338,7 +336,7 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
       - name: Failed (Update PR Comment)
         if: ${{ github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' }}
@@ -348,7 +346,7 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ### ❌ 테스트에 `${{ matrix.test }}` 실패하였습니다!
+            ### ❌ 테스트에 `${{ matrix.gradle.test }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
             ### 🧹 Clean
@@ -366,7 +364,7 @@ jobs:
             ${{ steps.test.outputs.test_result }}
             ```
 
-            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.test }}
+            by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.test }}
 
   NotifyResult:
     needs:
