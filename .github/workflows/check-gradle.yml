@@ -81,7 +81,7 @@ jobs:
               throw Error('Undefined matrix');
             }
 
-            return JSON.stringify(MATRIX.split(',')
+            return JSON.stringify({ item: MATRIX.split(',')
               .map(item => item.trim())
               .map(item => {
                 const result = item.split('@');
@@ -89,9 +89,9 @@ jobs:
                   test: result[0].trim(),
                   build: result[1].trim(),
                   report: result[2].trim()
-                }
+                };
               })
-            )
+            });
 
   Tests:
     name: 'Tests'
@@ -100,7 +100,7 @@ jobs:
       - Matrix
     strategy:
       matrix:
-        gradle: ${{ fromJson(needs.Matrix.outputs.matrix) }}
+        gradle: ${{ fromJson(needs.Matrix.outputs.matrix).item }}
     runs-on: actions-runner-system
     timeout-minutes: 16
     outputs:
