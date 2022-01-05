@@ -229,7 +229,6 @@ jobs:
 
       - name: Generate report
         if: ${{ always() }}
-        id: test
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)
 
