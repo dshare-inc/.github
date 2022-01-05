@@ -226,7 +226,7 @@ jobs:
           if-no-files-found: error
 
       - name: Parse test result
-        id: test
+        id: test_result
         if: ${{ always() }}
         run: |
           TEST_RESULT="$(cat test-result-console)"
@@ -281,14 +281,9 @@ jobs:
             ### ❌ 테스트에 `${{ matrix.gradle.name }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
-            ### 💾 Build
-            ```
-            ${{ steps.build.outputs.build_result }}
-            ```
-
             ### 🤖 Tests
             ```
-            ${{ steps.test.outputs.test_result }}
+            ${{ steps.test_result.outputs.test_result }}
             ```
 
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
@@ -304,14 +299,9 @@ jobs:
             ### ❌ 테스트에 `${{ matrix.gradle.name }}` 실패하였습니다!
             현재 시스템의 테스트가 실패하였습니다. 아래 Action의 `Details` 를 확인하시거나, Comment를 통해 제공된 Console Log를 참고하시기 바랍니다.
 
-            ### 💾 Build
-            ```
-            ${{ steps.build.outputs.build_result }}
-            ```
-
             ### 🤖 Tests
             ```
-            ${{ steps.test.outputs.test_result }}
+            ${{ steps.test_result.outputs.test_result }}
             ```
 
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
