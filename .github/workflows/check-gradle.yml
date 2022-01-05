@@ -101,9 +101,28 @@ jobs:
 
             by dshare-bot, PR COMMENT (check-gradle)
   Matrix:
-    uses: dshare-inc/.github/.github/workflows/matrix.yml@main
-    with:
-      matrix: ${{ github.event.inputs.test_commands }}
+    name: 'Matrix'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.extract.outputs.result }}
+    steps:
+      - name: Extract
+        uses: actions/github-script@v5
+        id: extract
+        env:
+          MATRIX: ${{ github.event.inputs.matrix }}
+        with:
+          result-encoding: string
+          script: |
+            if (MATRIX == null) {
+              throw Error('Undefined matrix');
+            }
+
+            const { MATRIX } = process.env;
+
+            return JSON.stringify({
+              item: MATRIX.split(',').map(item => item.trim())
+            })
 
   Tests:
     name: 'Tests (with Lint, Coverage Report)'
