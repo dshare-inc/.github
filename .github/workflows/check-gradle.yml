@@ -211,17 +211,12 @@ jobs:
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
-      - name: Change report name
-        if: ${{ (success() || failure()) }}
-        run: |
-          cp ${{ matrix.gradle.report }} ./code-coverage-test-report.xml
-
       - name: Upload code coverage report
         uses: actions/upload-artifact@v2
         if: ${{ (success() || failure()) }}
         with:
-          name: ${{ matrix.gradle.name }}-report
-          path: code-coverage-test-report.xml
+          name: ${{ matrix.gradle.name }}-codecov-report
+          path: ${{ matrix.gradle.report }}
           retention-days: 7
           if-no-files-found: error
 
@@ -313,6 +308,20 @@ jobs:
       - Tests
     if: ${{ (success() || failure()) }}
     steps:
+      - name: Checkout Pull Request VCS
+        uses: actions/checkout@v2
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Checkout VCS (Non PR)
+        uses: actions/checkout@v2
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+
       - name: Download files
         uses: actions/download-artifact@v2
 
@@ -324,7 +333,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          files: '*-report/code-coverage-test-report.xml'
+          files: '*-codecov-report/report.xml'
           fail_ci_if_error: false
           flags: test
           env_vars: test
