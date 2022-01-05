@@ -227,24 +227,24 @@ jobs:
           TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
           echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
-    - name: Upload code coverage report
-      uses: actions/upload-artifact@v2
-      continue-on-error: true
-      with:
-        name: ${{ matrix.gradle.test }}-report
-        path: ${{ matrix.gradle.report }}
-        retention-days: 21
-        if-no-files-found: error
+      - name: Upload code coverage report
+        uses: actions/upload-artifact@v2
+        continue-on-error: true
+        with:
+          name: ${{ matrix.gradle.test }}-report
+          path: ${{ matrix.gradle.report }}
+          retention-days: 21
+          if-no-files-found: error
 
-    - name: Add Code Coverage Report
-      uses: codecov/codecov-action@v2
-      if: ${{ always() }}
-      continue-on-error: true
-      with:
-        token: ${{ secrets.CODECOV_REPO_TOKEN }}
-        flags: ${{ matrix.gradle.test }}
-        name: ${{ matrix.gradle.test }}
-        files: ${{ matrix.gradle.report }}
+      - name: Add Code Coverage Report
+        uses: codecov/codecov-action@v2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_REPO_TOKEN }}
+          flags: ${{ matrix.gradle.test }}
+          name: ${{ matrix.gradle.test }}
+          files: ${{ matrix.gradle.report }}
 
       - name: Find Comment (After)
         uses: peter-evans/find-comment@v1
