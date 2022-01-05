@@ -365,7 +365,6 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           channel-id: ${{ secrets.SLACK_REVIEW_NOTIFICATION_CHANNEL }}
-          text: ${{ needs.Tests.result == 'success' && '✅ 테스트 및 검증 성공* _(SUCCESS)_' || '❌ 테스트 및 검증 실패* _(FAILURE)' }}
           payload: |
             {
             	"blocks": [
