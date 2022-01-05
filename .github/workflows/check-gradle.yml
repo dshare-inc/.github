@@ -16,7 +16,7 @@ on:
       commands:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
-        default: 'jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml @ test'
+        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco/report.xml @ test'
         required: false
       clean_build:
         type: boolean
@@ -87,9 +87,10 @@ jobs:
                 const result = item.split('@');
                 return {
                   test: result[0].trim(),
-                  build: result[1].trim(),
-                  report: result[2].trim(),
-                  name: result[3].trim()
+                  result: result[1].trim(),
+                  build: result[2].trim(),
+                  report: result[3].trim(),
+                  name: result[4].trim()
                 };
               })
             });
@@ -215,7 +216,6 @@ jobs:
           echo "::set-output name=build_result::$(echo $BUILD_RESULT)"
 
       - name: Tests
-        if: ${{ always() }}
         id: test
         run: |
           TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
@@ -226,6 +226,12 @@ jobs:
           TEST_RESULT="${TEST_RESULT//$'\r'/'%0D'}"
           TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
           echo "::set-output name=test_result::$(echo $TEST_RESULT)"
+
+      - name: Generate report
+        if: ${{ always() }}
+        id: test
+        run: |
+          ./gradlew --console verbose ${{ matrix.gradle.result }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)
 
       - name: Change report name
         if: ${{ always() }}
