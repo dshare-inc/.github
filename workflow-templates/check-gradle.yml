@@ -24,6 +24,8 @@ on:
 jobs:
   call-workflow:
     uses: dshare-inc/.github/.github/workflows/check-gradle.yml@main
+    with:
+      test_commands: 'test'
     secrets:
       AWS_ROLE_REGION: ${{ secrets.AWS_ROLE_REGION }}
       AWS_CODE_MANAGER_ROLE: ${{ secrets.AWS_CODE_MANAGER_ROLE }}

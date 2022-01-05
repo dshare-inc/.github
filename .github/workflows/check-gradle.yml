@@ -13,6 +13,11 @@ on:
         description: 'Java distribution (default is adopt)'
         default: 'adopt'
         required: false
+      test_commands:
+        type: string
+        description: 'Gradle test command. split by ","'
+        default: 'test'
+        required: true
       clean_build:
         type: boolean
         description: 'Build after clean'
@@ -27,11 +32,6 @@ on:
         type: string
         description: 'Codecov.io environment (phase)'
         default: 'test'
-        required: false
-      codecov_flag:
-        type: string
-        description: 'Codecov.io flags'
-        default: 'unit,integration'
         required: false
     secrets:
       AWS_ROLE_REGION:
@@ -57,7 +57,6 @@ env:
   CLEAN_BUILD: ${{ github.event.inputs.clean_build == null && true || github.events.inputs.clean_build }}
   CODECOV_REPORT: ${{ github.event.inputs.codecov_report == null && 'build/reports/jacoco/report.xml' || github.events.inputs.codecov_report }}
   CODECOV_ENV: ${{ github.event.inputs.codecov_env == null && 'test' || github.events.inputs.codecov_env }}
-  CODECOV_FLAGS: ${{ github.event.inputs.codecov_flag == null && 'unit,integration' || github.events.inputs.codecov_flag }}
 
 concurrency:
   group: check-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
@@ -101,10 +100,19 @@ jobs:
             테스트 결과는 PR Comment, Slack 으로 확인할 수 있습니다.
 
             by dshare-bot, PR COMMENT (check-gradle)
+  Matrix:
+    uses: dshare-inc/.github/.github/workflows/matrix.yml@main
+    with:
+      matrix: ${{ github.event.inputs.test_commands }}
 
   Tests:
     name: 'Tests (with Lint, Coverage Report)'
     if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨') }}
+    needs:
+      - Matrix
+    strategy:
+      matrix:
+        gradle: ${{ fromJson(needs.Matrix.outputs.matrix).item }}
     runs-on: actions-runner-system
     outputs:
       status: ${{ job.status }}
@@ -176,7 +184,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          BUILD_RESULT="$(./gradlew --console verbose build -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          BUILD_RESULT="$(./gradlew --console verbose build -x test -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$BUILD_RESULT"
 
           BUILD_RESULT="${BUILD_RESULT//'%'/'%25'}"
@@ -189,7 +197,7 @@ jobs:
         if: ${{ always() }}
         id: test
         run: |
-          TEST_RESULT="$(./gradlew --console verbose test jacocoTestReport -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
+          TEST_RESULT="$(./gradlew --console verbose ${{ matrix.gradle }} jacocoTestReport -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel)"
           echo "$TEST_RESULT"
 
           TEST_RESULT="${TEST_RESULT//'%'/'%25'}"
@@ -203,7 +211,7 @@ jobs:
         if: ${{ always() }}
         with:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          flags: ${{ env.CODECOV_FLAGS }}
+          flags: ${{ matrix.gradle }}
           fail_ci_if_error: false
           verbose: false
           env_vars: ${{ env.CODECOV_ENV }}

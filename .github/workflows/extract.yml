@@ -4,17 +4,24 @@ on:
   workflow_call:
     outputs:
       tag:
+        value: ${{ jobs.ExtractTag.outputs.result }}
         description: 'Tag'
       tag_module:
+        value: ${{ jobs.ExtractModuleFromTag.outputs.result }}
         description: 'Tag module'
       pr:
+        value: ${{ jobs.ExtractPR.outputs.result }}
         description: 'Pull request number'
       pr_module:
+        value: ${{ jobs.ExtractModuleFromPR.outputs.result }}
         description: 'Pull request(label) module'
 
 jobs:
   ExtractTag:
     name: 'Extract the tag'
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.tag.outputs.result }}
     steps:
       - name: Extract Tag
         id: tag_original
@@ -36,6 +43,9 @@ jobs:
 
   ExtractModuleFromTag:
     name: 'Extract the module from a tag'
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.module.outputs.result }}
     steps:
       - name: Extract Module from Tag
         id: module_original
@@ -49,6 +59,7 @@ jobs:
             }
 
             return context.payload.ref.replace(/refs\/tags\/([A-z0-9-_]+)-[0-9]+\.[0-9]+\.[0-9]+$/, '$1');
+
       - name: Extract Module from Tag Replace Quote
         id: module
         run: |
@@ -57,6 +68,9 @@ jobs:
 
   ExtractPR:
     name: 'Extract the PR'
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.pull_request.outputs.result }}
     steps:
       - name: Extract PR Number
         id: pull_request_original
@@ -78,6 +92,9 @@ jobs:
 
   ExtractModuleFromPR:
     name: 'Extract the module from a PR Label'
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.pr_module.outputs.result }}
     steps:
       - name: Extract PR Label Module
         id: pr_module_original
