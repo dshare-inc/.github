@@ -8,5 +8,5 @@ on:
       - edited
 
 jobs:
-  call-workflow:
+  workflow:
     uses: dshare-inc/.github/.github/workflows/jira-ticket-comment.yml@main

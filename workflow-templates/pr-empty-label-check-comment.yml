@@ -10,5 +10,5 @@ on:
       - unlabeled
 
 jobs:
-  call-workflow:
+  workflow:
     uses: dshare-inc/.github/.github/workflows/pr-empty-label-check-comment.yml@main

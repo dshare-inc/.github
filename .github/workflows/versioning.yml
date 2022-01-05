@@ -77,7 +77,7 @@ jobs:
             ORIGINAL=`git describe --abbrev=0 --tags --match "${{ inputs.module }}-[0-9]**" 2> /dev/null` || true
 
             if [[ -z "$ORIGINAL" ]]; then
-              ORIGINAL="${{ inputs.module }}-0.0.1"
+              ORIGINAL="${{ inputs.module }}-0.0.0"
             fi
 
             if [[ ! -z "${{ inputs.suffix }}" ]]; then

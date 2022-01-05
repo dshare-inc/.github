@@ -34,7 +34,7 @@ on:
           - minor
           - major
 jobs:
-  call-workflow:
+  workflow:
     uses: dshare-inc/.github/.github/workflows/versioning.yml@main
     with:
       use_module: ${{ github.event.inputs.use_module }}

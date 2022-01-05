@@ -1,0 +1,15 @@
+name: ✅ Check .gitignore
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
+      - ready_for_review
+  workflow_dispatch:
+
+jobs:
+  workflow:
+    uses: dshare-inc/.github/.github/workflows/check-gitignore.yml@main

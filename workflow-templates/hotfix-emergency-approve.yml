@@ -10,6 +10,6 @@ on:
       - unlabeled
 
 jobs:
-  call-workflow:
+  workflow:
     uses: dshare-inc/.github/.github/workflows/hotfix-emergency-approve.yml@main
 

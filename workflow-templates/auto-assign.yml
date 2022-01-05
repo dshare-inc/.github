@@ -8,5 +8,5 @@ on:
       - ready_for_review
 
 jobs:
-  call-workflow:
+  workflow:
     uses: dshare-inc/.github/.github/workflows/auto-assign.yml@main

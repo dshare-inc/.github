@@ -1,0 +1,102 @@
+name: ✅ Check .gitignore
+
+on:
+  workflow_call:
+
+jobs:
+  Check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Pull Request VCS
+        uses: actions/checkout@v2
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Checkout VCS (Non PR)
+        uses: actions/checkout@v2
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+
+      - name: Require
+        run: |
+          if [ ! -f ".gitignore" ]; then
+            echo ".gitignore not found."
+            exit 1
+          fi
+
+          exit 0
+
+      - name: Ignore .idea
+        run: |
+          CK=$(grep -n ".idea" .gitignore)
+          if [ "" = "${CK}" ]; then
+            echo "Remove .idea"
+            exit 1
+          else
+            exit 0
+          fi
+
+      - name: Ignore .vscode
+        run: |
+          CK=$(grep -n ".vscode" .gitignore)
+          if [ "" = "${CK}" ]; then
+            echo "Remove .vscode"
+            exit 1
+          else
+            exit 0
+          fi
+
+      - name: Check gradle
+        id: gradle
+        run: |
+          if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "::set-output name=result::true"
+          else
+            echo "::set-output name=result::false"
+          fi
+
+      - name: Ignore gradle.properties
+        if: ${{ steps.gradle.outputs.result == 'true' }}
+        run: |
+          CK=$(grep -n "gradle.properties" .gitignore)
+          if [ "" = "${CK}" ]; then
+            echo "Remove gradle.properties"
+            exit 1
+          else
+            exit 0
+          fi
+
+      - name: Check node.js (npm)
+        id: npm
+        run: |
+          if [ -f "package.json" ] || [ -f "yarn.lock" ]; then
+            echo "::set-output name=result::true"
+          else
+            echo "::set-output name=result::false"
+          fi
+
+      - name: Ignore .npmrc
+        if: ${{ steps.npm.outputs.result == 'true' }}
+        run: |
+          CK=$(grep -n ".npmrc" .gitignore)
+          if [ "" = "${CK}" ]; then
+            echo "Remove .npmrc"
+            exit 1
+          else
+            exit 0
+          fi
+
+      - name: Ignore .yarnrc.yml
+        if: ${{ steps.npm.outputs.result == 'true' }}
+        run: |
+          CK=$(grep -n ".yarnrc.yml" .gitignore)
+          if [ "" = "${CK}" ]; then
+            echo "Remove .yarnrc.yml"
+            exit 1
+          else
+            exit 0
+          fi
