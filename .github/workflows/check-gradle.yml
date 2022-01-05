@@ -404,7 +404,7 @@ jobs:
             						"text": "📄 ${{ github.event_name == 'pull_request' && 'PR로' || 'Commit으로' }} 바로가기"
             					},
             					"value": "go_to_pr",
-            					"url": "${{ github.event_name == 'pull_request' && ${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }} || ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }} }}"
+            					"url": "${{ github.event_name == 'pull_request' && format('{0}/{1}/pull/{2}', github.server_url, github.repository,github.event.pull_request.number) || format('{0}/{1}/commit/{2}', github.server_url, github.repository, github.sha }}"
             				},
             				{
             					"type": "button",
