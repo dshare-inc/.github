@@ -342,7 +342,7 @@ jobs:
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_REPO_TOKEN }}
-          files: './**/*.xml'
+          files: '*-report/report.xml'
 
   NotifyResult:
     needs:
