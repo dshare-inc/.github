@@ -23,11 +23,6 @@ on:
         description: 'Build after clean'
         default: true
         required: false
-      codecov_env:
-        type: string
-        description: 'Codecov.io environment (phase)'
-        default: 'test'
-        required: false
     secrets:
       AWS_ROLE_REGION:
         required: true
@@ -52,7 +47,6 @@ env:
   JAVA_VERSION: ${{ inputs.java_version == null && '11' || inputs.java_version }}
   JAVA_DISTRIBUTION: ${{ inputs.java_distribution == null && 'adopt' || inputs.java_distribution }}
   CLEAN_BUILD: ${{ inputs.clean_build == null && true || inputs.clean_build }}
-  CODECOV_ENV: ${{ inputs.codecov_env == null && 'test' || inputs.codecov_env }}
 
 concurrency:
   group: check-${{ github.repository }}-${{ github.ref }}-${{ github.event_name }}
@@ -205,7 +199,7 @@ jobs:
       - name: Tests
         id: test
         run: |
-          ./gradlew --console verbose test -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8  --parallel > test-result-console
+          ./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8  --parallel > test-result-console
 
       - name: Generate report
         if: ${{ (success() || failure()) }}
