@@ -111,9 +111,6 @@ jobs:
     timeout-minutes: 16
     outputs:
       status: ${{ job.status }}
-      clean_result: ${{ steps.clean.outputs.CLEAN_RESULT }}
-      build_result: ${{ steps.build.outputs.BUILD_RESULT }}
-      test_result: ${{ steps.test.outputs.TEST_RESULT }}
     steps:
       - name: Find Comment
         uses: peter-evans/find-comment@v1
@@ -208,7 +205,7 @@ jobs:
           CLEAN_RESULT="${CLEAN_RESULT//$'\n'/'%0A'}"
           CLEAN_RESULT="${CLEAN_RESULT//$'\r'/'%0D'}"
           CLEAN_RESULT="$(echo $CLEAN_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=CLEAN_RESULT::$(echo $CLEAN_RESULT)"
+          echo "::set-output name=clean_result::$(echo $CLEAN_RESULT)"
 
       - name: Build
         id: build
@@ -220,7 +217,7 @@ jobs:
           BUILD_RESULT="${BUILD_RESULT//$'\n'/'%0A'}"
           BUILD_RESULT="${BUILD_RESULT//$'\r'/'%0D'}"
           BUILD_RESULT="$(echo $BUILD_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=BUILD_RESULT::$(echo $BUILD_RESULT)"
+          echo "::set-output name=build_result::$(echo $BUILD_RESULT)"
 
       - name: Tests
         if: ${{ always() }}
@@ -234,7 +231,7 @@ jobs:
           TEST_RESULT="${TEST_RESULT//$'\n'/'%0A'}"
           TEST_RESULT="${TEST_RESULT//$'\r'/'%0D'}"
           TEST_RESULT="$(echo $TEST_RESULT | sed 's/\x1B\[[0-9;]\+[A-Za-z]//g')"
-          echo "::set-output name=TEST_RESULT::$(echo $TEST_RESULT)"
+          echo "::set-output name=test_result::$(echo $TEST_RESULT)"
 
       - name: Add Code Coverage Report
         uses: codecov/codecov-action@v1
@@ -260,12 +257,12 @@ jobs:
 
             ### 🧹 Clean
             ```
-            ${{ steps.test.outputs.clean_result }}
+            ${{ steps.clean.outputs.clean_result }}
             ```
 
             ### 💾 Build
             ```
-            ${{ steps.test.outputs.build_result }}
+            ${{ steps.build.outputs.build_result }}
             ```
 
             ### 🤖 Tests
@@ -288,12 +285,12 @@ jobs:
 
             ### 🧹 Clean
             ```
-            ${{ steps.test.outputs.clean_result }}
+            ${{ steps.clean.outputs.clean_result }}
             ```
 
             ### 💾 Build
             ```
-            ${{ steps.test.outputs.build_result }}
+            ${{ steps.build.outputs.build_result }}
             ```
 
             ### 🤖 Tests
@@ -315,12 +312,12 @@ jobs:
 
             ### 🧹 Clean
             ```
-            ${{ steps.test.outputs.clean_result }}
+            ${{ steps.clean.outputs.clean_result }}
             ```
 
             ### 💾 Build
             ```
-            ${{ steps.test.outputs.build_result }}
+            ${{ steps.build.outputs.build_result }}
             ```
 
             ### 🤖 Tests
@@ -343,12 +340,12 @@ jobs:
 
             ### 🧹 Clean
             ```
-            ${{ steps.test.outputs.clean_result }}
+            ${{ steps.clean.outputs.clean_result }}
             ```
 
             ### 💾 Build
             ```
-            ${{ steps.test.outputs.build_result }}
+            ${{ steps.build.outputs.build_result }}
             ```
 
             ### 🤖 Tests
