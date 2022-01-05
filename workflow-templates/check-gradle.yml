@@ -1,4 +1,4 @@
-name: ✅ Check Gradle (Test, Coverage, Lint)
+name: ✅ Check (Gradle)
 
 on:
   push:
