@@ -5,20 +5,14 @@ on:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
-env:
-  SLACK_CHANNEL: ''
-  URI: ''
-  MAX_ATTEMPTS: 10
-  RETRY_DELAY_SECOND: '5s'
-
 jobs:
   workflow:
     uses: dshare-inc/.github/.github/workflows/health-check.yml@main
     with:
-      uri: ${{ env.URI }}
-      max_attempts: ${{ env.MAX_ATTEMPTS }}
-      retry_delay_second: ${{ env.RETRY_DELAY_SECOND }}
-      channel: ${{ env.SLACK_CHANNEL }}
+      uri: ''
+      max_attempts: 10
+      retry_delay_second: '5s'
+      channel: ''
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       SLACK_HEALTH_CHECK_NOTIFICATION_CHANNEL: ${{ secrets.SLACK_HEALTH_CHECK_NOTIFICATION_CHANNEL }}
