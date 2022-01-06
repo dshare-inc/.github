@@ -38,7 +38,7 @@ jobs:
           follow-redirect: false
           max-attempts: ${{ inputs.max_attempts }}
           retry-delay: ${{ inputs.retry_delay_second }}
-          retry-all: true
+          retry-all: false
 
       - name: Failure notification
         if: ${{ failure() }}
