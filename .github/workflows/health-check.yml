@@ -1,0 +1,88 @@
+name: '❤️ Health check'
+
+on:
+  workflow_call:
+    inputs:
+      uri:
+        type: string
+        required: true
+      max_attempts:
+        type: number
+        default: 10
+        required: false
+      retry_delay_second:
+        type: string
+        default: '5s'
+        required: true
+      channel:
+        type: string
+        required: false
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_HEALTH_CHECK_NOTIFICATION_CHANNEL:
+        required: true
+
+env:
+  SLACK_CHANNEL: ${{ inputs.channel == '' && secrets.SLACK_HEALTH_CHECK_NOTIFICATION_CHANNEL || inputs.channel }}
+
+jobs:
+  http:
+    name: 'HTTP Health check'
+    runs-on: actions-runner-system
+    steps:
+      - name: Check the services
+        uses: jtalk/url-health-check-action@v2
+        with:
+          url: ${{ inputs.url }}
+          follow-redirect: false
+          max-attempts: ${{ inputs.max_attempts }}
+          retry-delay: ${{ inputs.retry_delay_second }}
+          retry-all: true
+
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v1.16.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL }}
+          payload: |
+            {
+            	"blocks": [
+            		{
+            			"type": "section",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "*🚦 상태 검사(Health check) 실패*"
+            			}
+            		},
+            		{
+            			"type": "section",
+            			"fields": [
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *Type: *\n> _HTTP_"
+            				},
+            				{
+            					"type": "mrkdwn",
+            					"text": "> *URL: *\n> ${{ inputs.url }}"
+            				}
+            			]
+            		},
+            		{
+            			"type": "actions",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "🚀 Action 결과로 바로가기",
+            						"emoji": true
+            					},
+            					"url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            				}
+            			]
+            		}
+            	]
+            }
