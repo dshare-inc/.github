@@ -1,0 +1,75 @@
+name: '🚀 Deploy'
+
+on:
+  workflow_call:
+    inputs:
+      type:
+        type: string
+        required: true
+      module:
+        type: string
+        required: false
+        default: ''
+      version:
+        type: string
+        required: true
+      version_repeat:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      auto_deploy_environments:
+        type: string
+        default: ''
+        required: false
+
+jobs:
+  validate:
+    name: 'Validate inputs'
+    runs-on: ubuntu-latest
+    steps:
+
+  check:
+    name: 'Check docker image'
+    runs-on: actions-runner-system
+    steps:
+      - name: AWS AssumeRole (Auth)
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_ROLE_REGION }}
+          role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+          role-duration-seconds: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+
+      - name: Check docker image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 15
+          command: |
+            docker manifest inspect $IMGNAME:$IMGTAG
+
+  notify_before:
+    name: 'Pre Notification'
+    runs-on: ubuntu-latest
+    outputs:
+
+    steps:
+
+
+  beanstalk:
+    name: 'Deploy Beanstalk'
+    runs-on: actions-runner-system
+    if: ${{ inputs.type == 'beanstalk' }}
+    steps:
+      - name: Create beanstalk artifact
+        run: |
+
+      - name: Upload to S3
+        run: |
+
+      - name: Deploy
+        run: |
+
+
+  notify:
