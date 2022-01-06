@@ -1,4 +1,4 @@
-name: '❤️ Health check'
+name: '💔 Health check'
 
 on:
   workflow_call:
