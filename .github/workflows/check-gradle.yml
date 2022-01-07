@@ -16,7 +16,13 @@ on:
       commands:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
-        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco/ @ report.xml @ test'
+        default: |
+          test @
+          jacocoTestReport @
+          build -x test @
+          build/reports/jacoco @
+          report.xml @
+          test
         required: false
       clean_build:
         type: boolean
