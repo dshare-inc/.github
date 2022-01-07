@@ -36,11 +36,9 @@ on:
         required: false
       share_single_build_result:
         type: string
-        description: 'If you want to share the build result (between the matrix), You need to set this variable to build result paths. Default is build/ and ~/.gradle/caches, ~/.gradle/wrapper.'
+        description: 'If you want to share the build result (between the matrix), You need to set this variable to build result paths. Default is build/.'
         default: |
           build/
-          ~/.gradle/caches
-          ~/.gradle/wrapper
         required: false
     secrets:
       AWS_ROLE_REGION:
@@ -95,17 +93,31 @@ jobs:
             }
 
             return JSON.stringify({ item: MATRIX.split(',')
-              .map(item => item.trim())
               .map(item => {
                 const result = item.split('@');
-                return {
-                  test: result[0].trim(),
-                  result: result[1].trim(),
-                  build: result[2].trim(),
-                  report: result[3].trim(),
-                  file: result[4].trim(),
-                  name: result[5].trim()
-                };
+                if (result.length == 6) {
+                  return {
+                    test: result[0].trim(),
+                    result: result[1].trim(),
+                    build: result[2].trim(),
+                    report: result[3].trim(),
+                    file: result[4].trim(),
+                    name: result[5].trim()
+                  };
+                }
+                const enter = item.split('\n');
+                if (enter.length == 6) {
+                  return {
+                    test: enter[0].trim(),
+                    result: enter[1].trim(),
+                    build: enter[2].trim(),
+                    report: enter[3].trim(),
+                    file: enter[4].trim(),
+                    name: enter[5].trim()
+                  };
+                }
+
+                throw Error('Unexpected matrix items');
               })
             });
 
@@ -175,7 +187,7 @@ jobs:
 
   Tests:
     name: 'Tests (${{ matrix.gradle.name }})'
-    if: ${{ (always() && needs.Matrix.result == 'success' && needs.Build.result != 'failure') && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨')) }}
+    if: ${{ (always() && needs.Matrix.result == 'success' && needs.Build.result != 'failure' && needs.Build.result != 'cancelled') && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨')) }}
     needs:
       - Matrix
       - Build
@@ -237,20 +249,11 @@ jobs:
 
       - name: Set up JDK (with Github Cache)
         uses: actions/setup-java@v2
-        if: ${{ needs.Build.outputs.result != 'true' }}
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           architecture: x64
           cache: gradle
-
-      - name: Set up JDK
-        uses: actions/setup-java@v2
-        if: ${{ needs.Build.outputs.result == 'true' }}
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
-          architecture: x64
 
       - name: AWS AssumeRole (Auth)
         uses: aws-actions/configure-aws-credentials@v1
