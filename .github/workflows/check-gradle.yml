@@ -169,7 +169,7 @@ jobs:
 
   Tests:
     name: 'Tests (${{ matrix.gradle.name }})'
-    if: ${{ (always() && needs.Matrix.result == 'success') && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨')) }}
+    if: ${{ (always() && needs.Matrix.result == 'success' && needs.Build.result != 'failure') && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨')) }}
     needs:
       - Matrix
       - Build
