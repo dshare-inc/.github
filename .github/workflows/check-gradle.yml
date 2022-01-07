@@ -23,6 +23,19 @@ on:
         description: 'Build after clean'
         default: true
         required: false
+      share_single_build_command:
+        type: string
+        description: 'Build command (for global)'
+        default: 'build -x test -x spotlessCheck'
+        required: false
+      share_single_build_result:
+        type: string
+        description: 'If you want to share the build result (between the matrix), You need to set this variable to build result paths. Default is build/ and ~/.gradle/caches, ~/.gradle/wrapper.'
+        default: |
+          build/
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        required: false
     secrets:
       AWS_ROLE_REGION:
         required: true
@@ -90,16 +103,81 @@ jobs:
               })
             });
 
+  Build:
+    name: 'Build (Pre)'
+    if: ${{ inputs.share_single_build_command != '' && inputs.share_single_build != '' }}
+    runs-on: actions-runner-system
+    timeout-minutes: 15
+    outputs:
+      result: 'true'
+    steps:
+      - name: Checkout Pull Request VCS
+        uses: actions/checkout@v2
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Checkout VCS (Non PR)
+        uses: actions/checkout@v2
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          architecture: x64
+          cache: gradle
+
+      - name: AWS AssumeRole (Auth)
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_ROLE_REGION }}
+          role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+          role-duration-seconds: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+
+      - name: AWS CodeArtifact Authentication (Gradle)
+        uses: dshare-inc/actions-codeartifact-auth@1.0.1
+        with:
+          region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+          domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+          owner: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
+          type: gradle
+          repo: gradle
+
+      - name: Clean
+        if: ${{ inputs.clean_build == 'true' }}
+        id: clean
+        run: |
+          ./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
+
+      - name: Build
+        id: build
+        run: |
+          ./gradlew --console verbose ${{ inputs.share_single_build_command }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: build
+          path: ${{ inputs.share_single_build_result }}
+          retention-days: 1
+
   Tests:
     name: 'Tests (${{ matrix.gradle.name }})'
-    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨') }}
+    if: ${{ (always() && needs.Matrix.result == 'success') && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨')) }}
     needs:
       - Matrix
+      - Build
     strategy:
       matrix:
         gradle: ${{ fromJson(needs.Matrix.outputs.matrix).item }}
     runs-on: actions-runner-system
-    timeout-minutes: 16
+    timeout-minutes: 10
     outputs:
       status: ${{ job.status }}
     steps:
@@ -151,13 +229,22 @@ jobs:
           token: ${{ github.token }}
           ref: ${{ github.ref }}
 
-      - name: Set up JDK
+      - name: Set up JDK (with Github Cache)
         uses: actions/setup-java@v2
+        if: ${{ needs.Build.outputs.result != 'true' }}
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           architecture: x64
           cache: gradle
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        if: ${{ needs.Build.outputs.result == 'true' }}
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          architecture: x64
 
       - name: AWS AssumeRole (Auth)
         uses: aws-actions/configure-aws-credentials@v1
@@ -175,14 +262,21 @@ jobs:
           type: gradle
           repo: gradle
 
+      - name: Download pre build
+        uses: actions/download-artifact@v2
+        if: ${{ needs.Build.outputs.result == 'true' }}
+        with:
+          name: build
+
       - name: Clean
-        if: ${{ env.CLEAN_BUILD == 'true' }}
+        if: ${{ inputs.clean_build == 'true' }}
         id: clean
         run: |
           ./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Build
         id: build
+        if: ${{ needs.Build.outputs.result != 'true' }}
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
@@ -400,3 +494,15 @@ jobs:
             		}
             	]
             }
+
+  Clean:
+    name: 'Cleanup'
+    runs-on: ubuntu-latest
+    needs:
+      - Tests
+      - Build
+    steps:
+      - name: Remove artifact
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: build
