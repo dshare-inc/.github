@@ -105,7 +105,7 @@ jobs:
 
   Build:
     name: 'Build (Pre)'
-    if: ${{ inputs.share_single_build_command != '' && inputs.share_single_build != '' }}
+    if: ${{ inputs.share_single_build_command != '' && inputs.share_single_build_result != '' }}
     runs-on: actions-runner-system
     timeout-minutes: 15
     outputs:
