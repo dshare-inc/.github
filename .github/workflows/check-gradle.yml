@@ -26,7 +26,7 @@ on:
       share_single_build_command:
         type: string
         description: 'Build command (for global)'
-        default: 'build -x test -x spotlessCheck'
+        default: 'build -x test'
         required: false
       share_single_build_result:
         type: string
