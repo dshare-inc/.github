@@ -1,0 +1,13 @@
+name: '✋ Hold on'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+      - labeled
+      - unlabeled
+
+jobs:
+  workflow:
+    uses: dshare-inc/.github/.github/workflows/on-hold-pr-fail.yml@main
