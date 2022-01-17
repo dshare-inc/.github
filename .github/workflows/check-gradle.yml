@@ -92,7 +92,6 @@ jobs:
 
   Tests:
     name: 'Tests (${{ matrix.gradle.name }})'
-    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
     needs:
       - Matrix
     strategy:
@@ -153,6 +152,7 @@ jobs:
 
       - name: Set up JDK
         uses: actions/setup-java@v2
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
@@ -161,6 +161,7 @@ jobs:
 
       - name: AWS AssumeRole (Auth)
         uses: aws-actions/configure-aws-credentials@v1
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
         with:
           aws-region: ${{ secrets.AWS_ROLE_REGION }}
           role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
@@ -168,6 +169,7 @@ jobs:
 
       - name: AWS CodeArtifact Authentication (Gradle)
         uses: dshare-inc/actions-codeartifact-auth@1.0.1
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
         with:
           region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
           domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
@@ -176,18 +178,20 @@ jobs:
           repo: gradle
 
       - name: Clean
-        if: ${{ env.CLEAN_BUILD == 'true' }}
+        if: ${{ env.CLEAN_BUILD == 'true' && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨'))) }}
         id: clean
         run: |
           ./gradlew --console verbose clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Build
         id: build
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.build }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
 
       - name: Tests
         id: test
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
         run: |
           ./gradlew --console verbose ${{ matrix.gradle.test }} -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8  --parallel > test-result-console
 
@@ -232,7 +236,7 @@ jobs:
           direction: last
 
       - name: Succeed (Create PR Comment)
-        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id == '' }}
+        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id == '' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -244,7 +248,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Succeed (Update PR Comment)
-        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' }}
+        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome == 'success' && steps.fc_after.outputs.comment-id != '' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -257,7 +261,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Failed (Create PR Comment)
-        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' }}
+        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id == '' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -274,7 +278,7 @@ jobs:
             by dshare-bot, PR COMMENT (check-gradle) ${{ matrix.gradle.name }}
 
       - name: Failed (Update PR Comment)
-        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' }}
+        if: ${{ (success() || failure()) && github.event_name == 'pull_request' && steps.test.outcome != 'success' && steps.fc_after.outputs.comment-id != '' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
         continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
