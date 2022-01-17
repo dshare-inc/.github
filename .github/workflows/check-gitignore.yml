@@ -5,6 +5,7 @@ on:
 
 jobs:
   Check:
+    name: Check .gitignore
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Pull Request VCS

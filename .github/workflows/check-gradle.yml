@@ -92,7 +92,7 @@ jobs:
 
   Tests:
     name: 'Tests (${{ matrix.gradle.name }})'
-    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action != 'unlabeled' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) || (github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨') }}
+    if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨')) }}
     needs:
       - Matrix
     strategy:
@@ -335,6 +335,7 @@ jobs:
     steps:
       - name: Succeed (Slack PR)
         uses: slackapi/slack-github-action@v1.16.0
+        if: ${{ github.event_name == 'pull_request' || (github.event_name != 'pull_request' && needs.Tests.result != 'success') }}
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
