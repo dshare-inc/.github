@@ -1,0 +1,23 @@
+name: '✋ Hold on'
+
+on:
+  workflow_call:
+
+jobs:
+  labeled:
+    name: '✋ Do not merge this PR'
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'on hold ✋') }}
+    steps:
+      - name: Exit 1
+        run: |
+          echo "DO NOT MERGE THIS!"
+          exit 1
+
+  unlabeled:
+    name: '🙏 Can merge this PR'
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'on hold ✋') }}
+    steps:
+      - name: Exit 0
+        run: exit 0
