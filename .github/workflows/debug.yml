@@ -10,3 +10,7 @@ jobs:
     steps:
       - name: '🖥 Execute'
         run: echo '${{ toJSON(github) }}'
+
+      - name: '🚨 Test hotfix'
+        if: ${{ (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨'))) }}
+        run: echo 'Run!'
