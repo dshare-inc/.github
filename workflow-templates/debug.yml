@@ -1,0 +1,28 @@
+name: '🐛 Debug'
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'master'
+      - 'develop'
+      - 'feature/*'
+    tags:
+      - '*-*.*.*'
+      - '*-*.*.*-*'
+      - '*.*.*-*'
+      - '*.*.*'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
+      - ready_for_review
+      - labeled
+      - closed
+  workflow_dispatch:
+
+jobs:
+  workflow:
+    uses: dshare-inc/.github/.github/workflows/debug.yml@main

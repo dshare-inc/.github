@@ -1,0 +1,6 @@
+{
+  "name": "\uD83D\uDC1B Debug",
+  "description": "Github workflow context 를 출력합니다.",
+  "iconName": "example-icon",
+  "filePatterns": []
+}
