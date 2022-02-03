@@ -1,0 +1,12 @@
+name: '🐛 Debug'
+
+on:
+  workflow_call:
+
+jobs:
+  print:
+    runs-on: ubuntu-latest
+    name: '🖥 Print Context'
+    steps:
+      - name: '🖥 Execute'
+        run: echo '${{ toJSON(github) }}'
