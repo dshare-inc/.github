@@ -7,6 +7,7 @@ on:
       - ready_for_review
       - labeled
       - unlabeled
+      - synchronize
 
 jobs:
   workflow:
