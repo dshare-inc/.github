@@ -6,7 +6,7 @@ on:
       type:
         type: string
         required: true
-        description: 'jdk or node'
+        description: 'java or nodejs'
       jdk_version:
         type: string
         required: false
