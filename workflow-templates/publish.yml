@@ -10,7 +10,7 @@ on:
 
 jobs:
   workflow:
-    uses: dshare-inc/.github/.github/workflows/hotfix-emergency-approve.yml@main
+    uses: dshare-inc/.github/.github/workflows/publish.yml@main
     with:
       type: '' # jdk / node
       jdk_version: '11.0'
