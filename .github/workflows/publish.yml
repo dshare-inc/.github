@@ -173,7 +173,7 @@ jobs:
           domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
           owner: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
           type: npm
-          repo: ${{ env.AWS_CODEARTIFACT_NPM_REPO }}
+          repo: npmjs
 
       - name: Set up NodeJS
         uses: actions/setup-node@v2
