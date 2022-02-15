@@ -1,0 +1,250 @@
+name: '⏫ Publish'
+
+on:
+  workflow_call:
+    inputs:
+      type:
+        type: string
+        required: true
+        description: 'jdk or node'
+      jdk_version:
+        type: string
+        required: false
+        default: '11.0'
+        description: 'JDK Version'
+      node_version:
+        type: string
+        required: true
+        default: '14'
+        description: 'Node.js runtime version'
+    secrets:
+      AWS_ECR_REGION:
+        required: true
+      AWS_CODEARTIFACT_REGION:
+        required: true
+      AWS_CODEARTIFACT_DOMAIN:
+        required: true
+      AWS_CODEARTIFACT_OWNER:
+        required: true
+      AWS_ROLE_SESSION_DURATION:
+        required: true
+      AWS_CODE_MANAGER_ROLE:
+        required: true
+
+concurrency:
+  group: publish-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  Extract:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.result }}
+      tag_module: ${{ steps.module.outputs.result }}
+    steps:
+      - name: Extract Tag
+        id: tag_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.payload.ref === undefined || context.payload.ref === null || context.payload.ref.match(/refs\/tags\//) === null) {
+              return '';
+            }
+            return context.payload.ref.replace(/refs\/tags\/(?:([A-z0-9-_]+)-|)([0-9]+\.[0-9]+\.[0-9]+)$/, '$2');
+
+      - name: Extract Tag Replace Quote
+        id: tag
+        run: |
+          ITEM=`echo "${{ steps.tag_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$ITEM"
+
+      - name: Extract Module from Tag
+        id: module_original
+        uses: actions/github-script@v5
+        if: ${{ always() }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.payload.ref === undefined || context.payload.ref === null || context.payload.ref.match(/refs\/tags\//) === null) {
+              return '';
+            }
+
+            return context.payload.ref.replace(/refs\/tags\/(?:([A-z0-9-_]+)-|)[0-9]+\.[0-9]+\.[0-9]+$/, '$1');
+
+      - name: Extract Module from Tag Replace Quote
+        id: module
+        run: |
+          ITEM=`echo "${{ steps.module_original.outputs.result }}" | sed -e 's/^"//' -e 's/"$//'`
+          echo "::set-output name=result::$ITEM"
+
+      - name: Check Results
+        env:
+          tag: ${{ steps.tag.outputs.result }}
+          tag_module: ${{ steps.module.outputs.result }}
+        run: |
+          echo $tag
+          echo $tag_module
+
+  Java:
+    name: Publish Java Library
+    timeout-minutes: 20
+    needs: [ Extract ]
+    runs-on: actions-runner-system
+    if: ${{ inputs.type == 'java' }}
+    env:
+      TAG_NUMBER: ${{ needs.Extract.outputs.tag }}
+      TAG_MODULE_NAME: ${{ needs.Extract.outputs.tag_module }}
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: AWS Authentication
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_ECR_REGION }}
+          role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+          role-duration-seconds: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+
+      - name: AWS CodeArtifact Authentication (Gradle)
+        uses: dshare-inc/actions-codeartifact-auth@1.0.1
+        with:
+          region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+          domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+          owner: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
+          type: gradle
+          repo: gradle
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ inputs.jdk_version }}
+          distribution: 'adopt'
+          architecture: x64
+          cache: 'gradle'
+
+      - name: Go to module
+        if: ${{ env.TAG_MODULE_NAME != '' }}
+        run: |
+          cd ${{ env.TAG_MODULE_NAME }}
+
+      - name: Clean
+        run: PROJECT_VERSION="${{ env.TAG_NUMBER }}" ./gradlew clean -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel
+
+      - name: Build
+        run: PROJECT_VERSION="${{ env.TAG_NUMBER }}" ./gradlew build -Dconsole.encoding=UTF-8 -Dfile.encoding=UTF-8 --no-daemon --parallel --build-cache
+
+      - name: Publish
+        run: PROJECT_VERSION="${{ env.TAG_NUMBER }}" ./gradlew publish
+
+  NodeJS:
+    name: Publish Javascript(Node.js) Library
+    timeout-minutes: 20
+    needs: [ Extract ]
+    runs-on: actions-runner-system
+    if: ${{ inputs.type == 'nodejs' }}
+    env:
+      TAG_NUMBER: ${{ needs.Extract.outputs.tag }}
+      TAG_MODULE_NAME: ${{ needs.Extract.outputs.tag_module }}
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: AWS Authentication
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_ECR_REGION }}
+          role-to-assume: ${{ secrets.AWS_CODE_MANAGER_ROLE }}
+          role-duration-seconds: ${{ secrets.AWS_ROLE_SESSION_DURATION }}
+
+      - name: AWS CodeArtifact Authentication (NPM)
+        uses: dshare-inc/actions-codeartifact-auth@1.0.1
+        with:
+          region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+          domain: ${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+          owner: ${{ secrets.AWS_CODEARTIFACT_OWNER }}
+          type: npm
+          repo: ${{ env.AWS_CODEARTIFACT_NPM_REPO }}
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: 'npm'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Go to module
+        if: ${{ env.TAG_MODULE_NAME != '' }}
+        run: |
+          cd ${{ env.TAG_MODULE_NAME }}
+
+      - name: Install Dependencies
+        run: |
+          yarn install
+
+      - name: Build
+        run: |
+          yarn rollup
+
+      - name: Publish
+        run: |
+          yarn publish
+
+      - name: Uninstall Yarn
+        if: always()
+        run: npm uninstall -g yarn
+
+  ReleaseJava:
+    name: Create github release note for java
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+    needs: [ Java ]
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          body: "Released"
+
+  ReleaseNode:
+    name: Create github release note for Node.js
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+    needs: [ NodeJS ]
+    steps:
+      - name: Checkout VCS
+        uses: actions/checkout@v2
+        with:
+          token: ${{ github.token }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          body: "Released"
