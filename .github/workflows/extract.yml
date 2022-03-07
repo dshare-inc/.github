@@ -19,7 +19,7 @@ on:
 jobs:
   ExtractTag:
     name: 'Extract the tag'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       result: ${{ steps.tag.outputs.result }}
     steps:
@@ -43,7 +43,7 @@ jobs:
 
   ExtractModuleFromTag:
     name: 'Extract the module from a tag'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       result: ${{ steps.module.outputs.result }}
     steps:
@@ -68,7 +68,7 @@ jobs:
 
   ExtractPR:
     name: 'Extract the PR'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       result: ${{ steps.pull_request.outputs.result }}
     steps:
@@ -92,7 +92,7 @@ jobs:
 
   ExtractModuleFromPR:
     name: 'Extract the module from a PR Label'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       result: ${{ steps.pr_module.outputs.result }}
     steps:

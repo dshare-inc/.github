@@ -15,7 +15,7 @@ concurrency:
 jobs:
   revoke:
     name: Revoke the review
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'unlabeled' && github.event.label.name == 'hotfix 🚨' }}
     steps:
       - name: Revoke pull request
@@ -95,7 +95,7 @@ jobs:
 
   approve:
     name: Approve the PR
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hotfix 🚨') }}
     steps:
       - name: Approve pull request

@@ -39,7 +39,7 @@ concurrency:
 jobs:
   Versioning:
     name: Versioning (Tag)
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     steps:
       - name: Checkout VCS
         uses: actions/checkout@v2

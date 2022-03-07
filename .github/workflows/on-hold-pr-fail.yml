@@ -6,7 +6,7 @@ on:
 jobs:
   labeled:
     name: '✋ Do not merge this PR'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ contains(github.event.pull_request.labels.*.name, 'on hold ✋') }}
     steps:
       - name: Exit 1
@@ -16,7 +16,7 @@ jobs:
 
   unlabeled:
     name: '🙏 Can merge this PR'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'on hold ✋') }}
     steps:
       - name: Exit 0

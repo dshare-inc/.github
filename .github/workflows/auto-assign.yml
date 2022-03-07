@@ -6,7 +6,7 @@ on:
 jobs:
   add-reviews:
     name: Add reviews
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     steps:
       - name: Assign
         uses: kentaro-m/auto-assign-action@v1.2.0

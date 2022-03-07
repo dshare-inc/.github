@@ -6,7 +6,7 @@ on:
 jobs:
   Check:
     name: Check .gitignore
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     steps:
       - name: Checkout Pull Request VCS
         uses: actions/checkout@v2

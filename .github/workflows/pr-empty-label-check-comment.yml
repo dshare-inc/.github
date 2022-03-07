@@ -10,7 +10,7 @@ concurrency:
 jobs:
   Label:
     name: 'Check the labels'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Success

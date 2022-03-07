@@ -16,7 +16,7 @@ on:
       commands:
         type: string
         description: 'Gradle test command. split by ",". build and code coverage report is @.'
-        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco/ @ report.xml @ test'
+        default: 'test @ jacocoTestReport @ build -x test @ build/reports/jacoco @ report.xml @ test'
         required: false
       clean_build:
         type: boolean
@@ -55,7 +55,7 @@ concurrency:
 jobs:
   Matrix:
     name: 'Create gradle test matrix'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       matrix: ${{ steps.extract.outputs.result }}
     steps:
@@ -297,7 +297,7 @@ jobs:
 
   Codecov:
     name: Add report (Codecov.io)
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     needs:
       - Tests
     if: ${{ (success() || failure()) && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨'))) }}
@@ -335,7 +335,7 @@ jobs:
       - Tests
     if: ${{ (success() || failure()) && (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'hotfix 🚨'))) }}
     name: 'Notification (Result)'
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     steps:
       - name: Succeed (Slack PR)
         uses: slackapi/slack-github-action@v1.16.0

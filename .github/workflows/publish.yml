@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   Extract:
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     outputs:
       tag: ${{ steps.tag.outputs.result }}
       tag_module: ${{ steps.module.outputs.result }}
@@ -208,7 +208,7 @@ jobs:
   ReleaseJava:
     name: Create github release note for java
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ success() }}
     needs: [ Java ]
     steps:
@@ -230,7 +230,7 @@ jobs:
   ReleaseNode:
     name: Create github release note for Node.js
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: actions-runner-system
     if: ${{ success() }}
     needs: [ NodeJS ]
     steps:
